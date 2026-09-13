@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stadsbus Veendam 510 Assistent</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            transition: background-color 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #000;
+            text-align: center;
+            background-color: #ffffff;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.92);
+            padding: 40px 20px;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            width: 85%;
+            max-width: 550px;
+            box-sizing: border-box;
+        }
+        h1 { font-size: 2.2rem; margin: 0 0 10px 0; color: #222; }
+        .status-text { font-size: 2rem; font-weight: bold; uppercase; margin: 15px 0; }
+        .time-diff { font-size: 4.5rem; font-weight: 900; margin: 10px 0; }
+        .info-gps { font-size: 1rem; color: #555; margin-top: 20px; }
+        button {
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            border: none;
+            background-color: #004B87;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        button:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app-box">
+    <h1 id="halte-naam">Lijn 510 Veendam</h1>
+    <p id="status-tekst">Klik hieronder om de tracking te starten</p>
+    <div class="time-diff" id="tijds-verschil">--</div>
+    <button id="start-btn" onclick="startBusTracking()">START ROUTE</button>
+    <p class="info-gps" id="gps-debug">GPS: Stand-by</p>
+</div>
+
+<script>
+// Volledige database van Lijn 510 op basis van de aangeleverde dienstregeling
+const haltesLijn510 = [
+    { naam: "1. Station Veendam (Vertrek)", minuut: 42, lat: 53.10127, lon: 6.75116 },
+    { naam: "2. Jakob Bruggemalaan (Heen)", minuut: 45, lat: 53.10264, lon: 6.75191 },
+    { naam: "3. Beneden Oosterdiep", minuut: 46, lat: 53.10091, lon: 6.75549 },
+    { naam: "4. Nassaustraat", minuut: 47, lat: 53.09843, lon: 6.75402 },
+    { naam: "5. Meridiaan", minuut: 48, lat: 53.09503, lon: 6.75231 },
+    { naam: "6. Oranjeborgh", minuut: 50, lat: 53.09249, lon: 6.75017 },
+    { naam: "7. Voormolenstraat", minuut: 51, lat: 53.09276, lon: 6.74413 },
+    { naam: "8. Jakob Bruggemalaan (Centr.)", minuut: 52, lat: 53.09459, lon: 6.74235 },
+    { naam: "9. van Beresteijnstraat", minuut: 53, lat: 53.09545, lon: 6.74100 },
+    { naam: "10. Parkeerterrein Promenade", minuut: 55, lat: 53.09705, lon: 6.73715 },
+    { naam: "11. Hertenkampstraat", minuut: 57, lat: 53.09542, lon: 6.73379 },
+    { naam: "12. R.H. van Deestweg", minuut: 58, lat: 53.09489, lon: 6.72675 },
+    { naam: "13. Zilverlaan", minuut: 0, lat: 53.09825, lon: 6.72635 },
+    { naam: "14. Steenstraat", minuut: 1, lat: 53.09887, lon: 6.73147 },
+    { naam: "15. Parkflat", minuut: 2, lat: 53.10271, lon: 6.73244 },
+    { naam: "16. Zeilstraat (Heen)", minuut: 3, lat: 53.10373, lon: 6.73485 },
+    { naam: "17. Oostlaan (Heen)", minuut: 4, lat: 53.10657, lon: 6.73335 },
+    { naam: "18. Finse Golf (Heen)", minuut: 6, lat: 53.10915, lon: 6.72605 },
+    { naam: "19. Skagerrak (Heen)", minuut: 8, lat: 53.10705, lon: 6.71985 },
+    { naam: "20. WC Skagerrak (Heen)", minuut: 10, lat: 53.10444, lon: 6.72085 },
+    { naam: "21. Eems", minuut: 11, lat: 53.10185, lon: 6.72145 },
+    { naam: "22. Gelrelaan", minuut: 12, lat: 53.09795, lon: 6.71615 },
+    { naam: "23. Rietgors", minuut: 13, lat: 53.09345, lon: 6.71425 },
+    { naam: "24. Langebosschedijk", minuut: 14, lat: 53.09062, lon: 6.71435 },
+    { naam: "25. Groen van Prinstererlaan", minuut: 15, lat: 53.08845, lon: 6.72185 },
+    { naam: "26. Wildervank, Westerhave", minuut: 16, lat: 53.07822, lon: 6.74955 },
+    { naam: "27. Wildervank, Zuideinde", minuut: 18, lat: 53.07445, lon: 6.74815 },
+    { naam: "28. Veendam, Apollolaan", minuut: 18, lat: 53.08055, lon: 6.74235 },
+    { naam: "29. Veendam, 5e Laan", minuut: 19, lat: 53.08335, lon: 6.74105 },
+    { naam: "30. Veendam, Nijverheidsstraat", minuut: 20, lat: 53.08645, lon: 6.74015 },
+    { naam: "31. Veendam, Sint Franciscus", minuut: 21, lat: 53.08895, lon: 6.73815 },
+    { naam: "32. Veendam, De Breehorn", minuut: 22, lat: 53.09115, lon: 6.73355 },
+    { naam: "33. Veendam, Lubecker Bocht", minuut: 24, lat: 53.09685, lon: 6.72315 },
+    { naam: "34. WC Skagerrak (Terug)", minuut: 25, lat: 53.10444, lon: 6.72085 },
+    { naam: "35. Skagerrak (Terug)", minuut: 27, lat: 53.10705, lon: 6.71985 },
+    { naam: "36. Finse Golf (Terug)", minuut: 28, lat: 53.10915, lon: 6.72605 },
+    { naam: "37. Oostlaan (Terug)", minuut: 30, lat: 53.10657, lon: 6.73335 },
+    { naam: "38. Zeilstraat (Terug)", minuut: 32, lat: 53.10373, lon: 6.73485 },
+    { naam: "39. Zwembad (Aquapark)", minuut: 33, lat: 53.10345, lon: 6.74215 },
+    { naam: "40. Kazemierstraat", minuut: 33, lat: 53.10095, lon: 6.74415 },
+    { naam: "41. Veendam, Lidl", minuut: 34, lat: 53.10115, lon: 6.74755 },
+    { naam: "42. Veendam, Kerkplein", minuut: 35, lat: 53.09915, lon: 6.74835 },
+    { naam: "43. Raadhuisplein 5", minuut: 36, lat: 53.09845, lon: 6.74955 },
+    { naam: "44. Bocht Oosterdiep", minuut: 38, lat: 53.10045, lon: 6.75085 }
+];
+
+let watchId = null;
+
+function startBusTracking() {
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('halte-naam').innerText = "GPS opstarten...";
+    
+    if (navigator.geolocation) {
+        // Scherm actief houden via de browser Wake Lock API indien ondersteund
+        if (navigator.wakeLock) { navigator.wakeLock.request('screen').catch(()=>{}); }
+        
+        watchId = navigator.geolocation.watchPosition(analyseerLocatie, toonGpsFout, {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000
+        });
+    } else {
+        alert("Fout: Jouw telefoon ondersteunt geen GPS in de browser.");
+    }
+}
+
+function analyseerLocatie(position) {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    const acc = position.coords.accuracy;
+    
+    document.getElementById('gps-debug').innerText = `GPS Nauwkeurigheid: ${Math.round(acc)}m`;
+
+    let dichtstbijzijndeHalte = null;
+    let minsteAfstand = Infinity;
+    
+    // Zoek de meest nabije bushalte
+    haltesLijn510.forEach(halte => {
+        let d = berekenAfstandInMeters(lat, lon, halte.lat, halte.lon);
+        if (d < minsteAfstand) {
+            minsteAfstand = d;
+            dichtstbijzijndeHalte = halte;
+        }
+    });
+    
+    // Straal van 75 meter om te bepalen of de bus daadwerkelijk bij de halte staat/rijdt
+    if (dichtstbijzijndeHalte && minsteAfstand < 75) {
+        evalueerDienstregelingstijd(dichtstbijzijndeHalte);
+    } else {
+        // Tussen de haltes in kleurt het scherm neutraal wit/grijs
+        document.body.style.backgroundColor = "#e0e0e0"; 
+        document.getElementById('halte-naam').innerText = "Onderweg...";
+        document.getElementById('status-tekst').innerText = "Volgende halte nadert";
+        document.getElementById('tijds-verschil').innerText = "---";
+    }
+}
+
+function evalueerDienstregelingstijd(halte) {
+    const nu = new Date();
+    const huidigeMinuut = nu.getMinutes();
+    
+    document.getElementById('halte-naam').innerText = halte.naam;
+    
+    // Bereken het tijdsverschil in minuten binnen de 60-minutencyclus
+    let verschil = huidigeMinuut - halte.minuut;
+    if (verschil > 30) verschil -= 60;
+    if (verschil < -30) verschil += 60;
+    
+    if (verschil < 0) {
+        // TE VROEG -> ROOD
+        document.body.style.backgroundColor = "#ff4d4d"; 
+        document.getElementById('status-tekst').innerText = "TE VROEG (WACHTEN)";
+        document.getElementById('tijds-verschil').innerText = `${Math.abs(verschil)}m`;
+    } else if (verschil <= 2) {
+        // OP TIJD (tussen 0 en 2 minuten vertraging) -> GROEN
+        document.body.style.backgroundColor = "#2ecc71"; 
+        document.getElementById('status-tekst').innerText = "OP TIJD (DOORRIJDEN)";
+        document.getElementById('tijds-verschil').innerText = "OK";
+    } else {
+        // TE LAAT (meer dan 2 minuten vertraging) -> GEEL
+        document.body.style.backgroundColor = "#f1c40f"; 
+        document.getElementById('status-tekst').innerText = "TE LAAT";
+        document.getElementById('tijds-verschil').innerText = `+${verschil}m`;
+    }
+}
+
+// Haversine formule voor nauwkeurige afstandsberekening in meters
+function berekenAfstandInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const phi1 = lat1 * Math.PI/180;
+    const phi2 = lat2 * Math.PI/180;
+    const deltaPhi = (lat2-lat1) * Math.PI/180;
+    const deltaLambda = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}
+
+function toonGpsFout(err) {
+    document.getElementById('status-tekst').innerText = "GPS signaal verloren of geblokkeerd";
+    document.body.style.backgroundColor = "#7f8c8d";
+}
+</script>
+</body>
+</html>
