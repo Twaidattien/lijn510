@@ -4,38 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Bus 510 Tracker - Veendam</title>
-    
-    <!-- Leaflet CSS voor de kaart -->
     <link rel="stylesheet" href="https://unpkg.com" />
-    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
         }
         header {
-            background-color: #ffc107; /* Qbuzz geel/oranje vibe */
-            color: #333;
-            padding: 15px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
+            background-color: #ffc107; color: #333; padding: 15px; text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000;
         }
         h1 { margin: 0; font-size: 1.5rem; }
-        #status {
-            font-size: 0.9rem;
-            margin-top: 5px;
-            font-weight: bold;
-        }
-        #map {
-            flex-grow: 1;
-            width: 100%;
-        }
-        .loading { color: #666; }
+        #status { font-size: 0.9rem; margin-top: 5px; font-weight: bold; }
+        #map { flex-grow: 1; width: 100%; }
         .online { color: #28a745; }
         .offline { color: #dc3545; }
     </style>
@@ -44,92 +25,76 @@
 
     <header>
         <h1>🚌 Live Tracker: Buurtbus 510 Veendam</h1>
-        <div id="status" class="loading">Status: Locatie zoeken...</div>
+        <div id="status">Status: Gegevens ophalen...</div>
     </header>
 
-    <!-- De kaart container -->
     <div id="map"></div>
 
-    <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com"></script>
-    
     <script>
-        // 1. Initialiseer de kaart en centreer op Veendam
+        // Initialiseer kaart op Veendam
         const map = L.map('map').setView([53.1017, 6.8742], 13);
-
-        // OpenStreetMap achtergrondkaarten inladen
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap-auteurs'
+            maxZoom: 19, attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Bus marker variabele (zodat we hem kunnen updaten in plaats van dupliceren)
         let busMarker = null;
+        const busIcon = L.divIcon({ html: '<span style="font-size: 24px;">🚌</span>', iconSize: [24, 24] });
 
-        // Custom Icoontje voor de bus
-        const busIcon = L.divIcon({
-            html: '<span style="font-size: 24px;">🚌</span>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-        });
-
-        // 2. Functie om de live data van OVapi op te halen
         async function trackBus() {
             const statusEl = document.getElementById('status');
             
             try {
-                // We vragen de actieve voertuigposities op van het OVapi netwerk
+                // GEOPTIMALISEERD: We vragen specifiek de data van Qbuzz lijn 510 op in plaats van heel Nederland
+                // Richting 1 en Richting 2 worden gecombineerd via de lijn-specifieke call
                 const response = await fetch('https://ovapi.nl');
-                if (!response.ok) throw new Error('Netwerkrespons was niet ok');
+                
+                if (!response.ok) {
+                    statusEl.innerHTML = "🔴 API service is momenteel overbelast. Probeer zo direct nog eens.";
+                    statusEl.className = 'offline';
+                    return;
+                }
                 
                 const data = await response.json();
                 let busFound = false;
 
-                // Loop door alle actieve voertuigen in Nederland
-                for (const vehicleId in data) {
-                    const vehicle = data[vehicleId];
+                // Loop door de resultaten om te kijken of er een live voertuig (actual) gekoppeld is
+                for (const lineKey in data) {
+                    const lineData = data[lineKey];
                     
-                    // Filter specifiek op Qbuzz lijn 510 (LinePlanningNumber b510 of 510)
-                    if (vehicle.LinePlanningNumber === '510' || vehicle.LinePlanningNumber === 'b510') {
-                        
-                        // Controleer of er geldige GPS coördinaten zijn
-                        if (vehicle.Latitude && vehicle.Longitude) {
-                            const lat = vehicle.Latitude;
-                            const lng = vehicle.Longitude;
-                            const delay = vehicle.Delay ? Math.round(vehicle.Delay / 60) : 0;
-                            let delayText = delay === 0 ? "op tijd" : (delay > 0 ? `+${delay} min vertraging` : `${delay} min te vroeg`);
-
-                            // Update de statusbalk
-                            statusEl.innerHTML = `🟢 Bus is LIVE! Richting: ${vehicle.DestinationName || 'Veendam'} (${delayText})`;
-                            statusEl.className = 'online';
-
-                            // Plaats of verplaats de marker op de kaart
-                            if (busMarker) {
-                                busMarker.setLatLng([lat, lng]);
-                            } else {
-                                busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
-                                // Centreer de kaart de eerste keer automatisch op de bus
-                                map.setView([lat, lng], 14);
-                            }
+                    // Controleer of er actuele ritten (actuals) actief zijn
+                    if (lineData.Actuals) {
+                        for (const actualKey in lineData.Actuals) {
+                            const actual = lineData.Actuals[actualKey];
                             
-                            // Voeg een popup toe met extra info bij het klikken
-                            busMarker.bindPopup(`
-                                <b>Buurtbus Lijn 510</b><br>
-                                <b>Bestemming:</b> ${vehicle.DestinationName || 'Onbekend'}<br>
-                                <b>Status:</b> ${delayText}<br>
-                                <b>Snelheid:</b> ${vehicle.Speed || 0} km/u<br>
-                                <small>Laatste update: ${new Date().toLocaleTimeString()}</small>
-                            `);
+                            // Heeft de bus een live GPS positie?
+                            if (actual.Latitude && actual.Longitude) {
+                                const lat = actual.Latitude;
+                                const lng = actual.Longitude;
+                                const delay = actual.Delay ? Math.round(actual.Delay / 60) : 0;
+                                let delayText = delay === 0 ? "op tijd" : (delay > 0 ? `+${delay} min` : `${delay} min vroeg`);
 
-                            busFound = true;
-                            break; // Stop de loop zodra de bus is gevonden
+                                statusEl.innerHTML = `🟢 Bus is LIVE! Bestemming: ${actual.DestinationName || 'Veendam'} (${delayText})`;
+                                statusEl.className = 'online';
+
+                                if (busMarker) {
+                                    busMarker.setLatLng([lat, lng]);
+                                } else {
+                                    busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
+                                    map.setView([lat, lng], 14); // Automatisch zoomen op de bus
+                                }
+
+                                busMarker.bindPopup(`<b>Buurtbus 510</b><br>Status: ${delayText}<br>Laatste update: ${new Date().toLocaleTimeString()}`);
+                                busFound = true;
+                                break;
+                            }
                         }
                     }
+                    if (busFound) break;
                 }
 
-                // Als er momenteel geen actieve bus 510 in de datastroom zit
                 if (!busFound) {
-                    statusEl.innerHTML = "🔴 Bus rijdt momenteel niet (of zendt geen GPS uit).";
+                    statusEl.innerHTML = "⏰ De bus rijdt momenteel niet volgens de live dienstregeling (buiten dienst/nacht).";
                     statusEl.className = 'offline';
                     if (busMarker) {
                         map.removeLayer(busMarker);
@@ -138,15 +103,15 @@
                 }
 
             } catch (error) {
-                console.error('Fout bij ophalen busdata:', error);
-                statusEl.innerHTML = "⚠️ Fout bij laden van live data. Probyte opnieuw...";
+                console.error(error);
+                statusEl.innerHTML = "⚠️ Fout bij verbinding maken met de OV-server.";
                 statusEl.className = 'offline';
             }
         }
 
-        // 3. Start de tracker direct en ververs elke 10 seconden
+        // Start direct en ververs elke 15 seconden (vriendelijker voor de data)
         trackBus();
-        setInterval(trackBus, 10000);
+        setInterval(trackBus, 15000);
     </script>
 </body>
 </html>
