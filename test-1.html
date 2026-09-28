@@ -165,7 +165,7 @@ function evalueerDienstregelingstijd(halte) {
     // Bereken het verschil binnen een cyclus van 60 minuten
     let verschil = huidigeMinuut - halte.minuut;
     if (verschil > 30) verschil -= 60;
-    if (verschil < -30) volverstaan = verschil += 60;
+    if (verschil < -30) verschil += 60; // Gecorrigeerd: 'volverstaan =' is hier nu weg!
 
     let weergaveVerschil = verschil > 0 ? `+${verschil}` : verschil;
     document.getElementById('tijds-verschil').innerText = weergaveVerschil;
@@ -185,6 +185,7 @@ function evalueerDienstregelingstijd(halte) {
         document.getElementById('status-tekst').innerText = "TE LAAT";
     }
 }
+
 
 function toonGpsFout(error) {
     document.getElementById('gps-debug').innerText = `GPS Fout: ${error.message}`;
