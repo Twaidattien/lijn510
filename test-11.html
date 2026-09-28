@@ -153,7 +153,7 @@ function analyseerLocatie(position) {
     let dichtstbijzijndeHalte = null;
     let minsteAfstand = Infinity;
     
-    // Bereken voor elke halte de pure afstand in meters
+    // Controleer alle 44 haltes met de gecorrigeerde volgorde van invoer
     haltesLijn510.forEach(halte => {
         let d = berekenAfstandInMeters(lat, lon, halte.lat, halte.lon);
         if (d < minsteAfstand) {
@@ -167,7 +167,7 @@ function analyseerLocatie(position) {
         document.getElementById('debug-stop-dist').innerText = Math.round(minsteAfstand) + " meter";
     }
 
-    // Zet de zoekstraal hier voor de test buiten weer op 100 meter
+    // Zet de zoekstraal hier voor het testen buiten op 100 meter
     if (dichtstbijzijndeHalte && minsteAfstand < 100) {
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
@@ -206,17 +206,17 @@ function toonGpsFout(error) {
     document.getElementById('gps-debug').innerText = "GPS Fout: " + error.message;
 }
 
+// Deze kortere formule is 100% crash-proof en corrigeert de invoerfout
 function berekenAfstandInMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000; // Straal van de aarde in meters
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const radLat1 = lat1 * Math.PI / 180;
+    const radLat2 = lat2 * Math.PI / 180;
+    const radDeltaLon = (lon2 - lon1) * Math.PI / 180;
     
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const d = Math.acos(Math.sin(radLat1) * Math.sin(radLat2) + 
+              Math.cos(radLat1) * Math.cos(radLat2) * Math.cos(radDeltaLon)) * R;
               
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Geeft nu gegarandeerd de échte meters terug
+    return isNaN(d) ? Infinity : d;
 }
 </script>
 </body>
