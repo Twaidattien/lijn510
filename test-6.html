@@ -182,7 +182,7 @@ function evalueerDienstregelingstijd(halte) {
     if (verschil < 0) {
         document.body.style.backgroundColor = "#ff3b30"; // Krachtig signaalrood (Apple stijl)
         document.getElementById('status-tekst').innerText = "TE VROEG";
-    } else if (verschil <= 3) {
+    } else if (verschil <= 2) {
         document.body.style.backgroundColor = "#34c759"; // Helder digitaal groen 
         document.getElementById('status-tekst').innerText = "OP TIJD";
     } else {
