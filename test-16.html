@@ -94,23 +94,23 @@ const haltesLijn510 = [
     { naam: "23. Rietgors", minuut: 13, lat: 53.09345, lon: 6.84153 },
     { naam: "24. Langebosschedijk", minuut: 14, lat: 53.09062, lon: 6.84163 },
     { naam: "25. Groen van Prinstererlaan", minuut: 15, lat: 53.08845, lon: 6.84913 },
-    { naam: "26. Wildervank, Westerhave", minuut: 16, lat: 53.07822, lon: 6.87683 },
-    { naam: "27. Wildervank, Zuideinde", minuut: 18, lat: 53.07445, lon: 6.87543 },
-    { naam: "28. Veendam, Apollolaan", minuut: 18, lat: 53.08055, lon: 6.86963 },
-    { naam: "29. Veendam, 5e Laan", minuut: 19, lat: 53.08335, lon: 6.86833 },
-    { naam: "30. Veendam, Nijverheidsstraat", minuut: 20, lat: 53.08645, lon: 6.86743 },
-    { naam: "31. Veendam, Sint Franciscus", minuut: 21, lat: 53.08895, lon: 6.86543 },
-    { naam: "32. Veendam, De Breehorn", minuut: 22, lat: 53.09115, lon: 6.86083 },
-    { naam: "33. Veendam, Lubecker Bocht", minuut: 24, lat: 53.09685, lon: 6.85043 },
+    { naam: "26. Westerhave", minuut: 16, lat: 53.07822, lon: 6.87683 },
+    { naam: "27. Zuideinde", minuut: 18, lat: 53.07445, lon: 6.87543 },
+    { naam: "28. Apollolaan", minuut: 18, lat: 53.08055, lon: 6.86963 },
+    { naam: "29. 5e Laan", minuut: 19, lat: 53.08335, lon: 6.86833 },
+    { naam: "30. Nijverheidsstraat", minuut: 20, lat: 53.08645, lon: 6.86743 },
+    { naam: "31. Sint Franciscus", minuut: 21, lat: 53.08895, lon: 6.86543 },
+    { naam: "32. De Breehorn", minuut: 22, lat: 53.09115, lon: 6.86083 },
+    { naam: "33. Lubecker Bocht", minuut: 24, lat: 53.09685, lon: 6.85043 },
     { naam: "34. WC Skagerrak (Terug)", minuut: 25, lat: 53.10444, lon: 6.84813 },
     { naam: "35. Skagerrak (Terug)", minuut: 27, lat: 53.10705, lon: 6.84713 },
     { naam: "36. Finse Golf (Terug)", minuut: 28, lat: 53.10915, lon: 6.85333 },
     { naam: "37. Oostlaan (Terug)", minuut: 30, lat: 53.10657, lon: 6.86063 },
     { naam: "38. Zeilstraat (Terug)", minuut: 32, lat: 53.10373, lon: 6.86213 },
-    { naam: "39. Zwembad (Aquapark)", minuut: 33, lat: 53.10345, lon: 6.86943 },
+    { naam: "39. Zwembad", minuut: 33, lat: 53.10345, lon: 6.86943 },
     { naam: "40. Kazemierstraat", minuut: 33, lat: 53.10095, lon: 6.87143 },
-    { naam: "41. Veendam, Lidl", minuut: 34, lat: 53.10115, lon: 6.87483 },
-    { naam: "42. Veendam, Kerkplein", minuut: 35, lat: 53.09915, lon: 6.87563 },
+    { naam: "41. Lidl en Poiesz", minuut: 34, lat: 53.10115, lon: 6.87483 },
+    { naam: "42. Kerkplein", minuut: 35, lat: 53.09915, lon: 6.87563 },
     { naam: "43. Raadhuisplein 5", minuut: 36, lat: 53.09845, lon: 6.87683 },
     { naam: "44. Bocht Oosterdiep", minuut: 38, lat: 53.10045, lon: 6.87813 }
 ];
@@ -169,8 +169,8 @@ function analyseerLocatie(position) {
         document.getElementById('debug-stop-dist').innerText = Math.round(minsteAfstand) + " meter";
     }
 
-    // Zet de zoekstraal hier voor het testen buiten op 150 meter
-    if (dichtstbijzijndeHalte && minsteAfstand < 150) {
+    // Zet de zoekstraal hier voor het testen buiten op 100 meter
+    if (dichtstbijzijndeHalte && minsteAfstand < 100) {
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
         document.body.style.backgroundColor = "#e0e0e0"; 
