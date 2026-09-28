@@ -155,8 +155,8 @@ function analyseerLocatie(position) {
         document.getElementById('debug-stop-dist').innerText = Math.round(minsteAfstand) + " meter";
     }
     
-    // Ruime straal van 500 meter voor betrouwbaarheid in de praktijk
-    if (dichtstbijzijndeHalte && minsteAfstand < 500) {
+    // Ruime straal van 10000 meter voor betrouwbaarheid in de praktijk
+    if (dichtstbijzijndeHalte && minsteAfstand < 10000) {
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
         document.body.style.backgroundColor = "#e0e0e0"; 
