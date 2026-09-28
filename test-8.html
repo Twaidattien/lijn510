@@ -118,17 +118,21 @@ let watchId = null;
 function startBusTracking() {
     document.getElementById('start-btn').style.display = 'none';
     document.getElementById('halte-naam').innerText = "GPS opstarten...";
+    if (document.getElementById('debug-sys-status')) {
+        document.getElementById('debug-sys-status').innerText = "GPS Verbinding maken...";
+    }
     
     if (navigator.geolocation) {
         if (navigator.wakeLock) { navigator.wakeLock.request('screen').catch(()=>{}); }
         
+        // maximumAge op 0 en timeout verhoogd om de browser te DWINGEN telkens LIVE te meten
         watchId = navigator.geolocation.watchPosition(analyseerLocatie, toonGpsFout, {
             enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000
+            maximumAge: 0, 
+            timeout: 5000
         });
     } else {
-        alert("Fout: Jouw telefoon ondersteunt geen GPS in de browser.");
+        alert("Fout: Jouw telefoon ondersteunt geen GPS.");
     }
 }
 
@@ -137,12 +141,17 @@ function analyseerLocatie(position) {
     const lon = position.coords.longitude;
     const acc = position.coords.accuracy;
     
-    document.getElementById('gps-debug').innerText = `GPS Nauwkeurigheid: ${Math.round(acc)}m`;
+    // Update het debugscherm met de échte live coördinaten van je telefoon
+    if (document.getElementById('debug-my-lat')) {
+        document.getElementById('debug-my-lat').innerText = lat.toFixed(5);
+        document.getElementById('debug-my-lon').innerText = lon.toFixed(5);
+        document.getElementById('debug-my-acc').innerText = Math.round(acc) + " meter";
+    }
 
     let dichtstbijzijndeHalte = null;
     let minsteAfstand = Infinity;
     
-    // Zoek de meest nabije bushalte
+    // Controleer ALLE 44 haltes
     haltesLijn510.forEach(halte => {
         let d = berekenAfstandInMeters(lat, lon, halte.lat, halte.lon);
         if (d < minsteAfstand) {
@@ -150,18 +159,24 @@ function analyseerLocatie(position) {
             dichtstbijzijndeHalte = halte;
         }
     });
-        if (dichtstbijzijndeHalte) {
+    
+    if (dichtstbijzijndeHalte && document.getElementById('debug-stop-name')) {
         document.getElementById('debug-stop-name').innerText = dichtstbijzijndeHalte.naam;
         document.getElementById('debug-stop-dist').innerText = Math.round(minsteAfstand) + " meter";
     }
-    
-    // Ruime straal van 100 meter voor betrouwbaarheid in de praktijk
+
+    // ALS de afstand kleiner is dan 100 meter (zet voor thuistest weer even op 10000)
     if (dichtstbijzijndeHalte && minsteAfstand < 100) {
+        if (document.getElementById('debug-sys-status')) {
+            document.getElementById('debug-sys-status').innerText = "Binnen straal! Kleuren triggeren...";
+        }
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
+        if (document.getElementById('debug-sys-status')) {
+            document.getElementById('debug-sys-status').innerText = "Buiten straal. Scherm blijft neutraal.";
+        }
         document.body.style.backgroundColor = "#e0e0e0"; 
         document.getElementById('halte-naam').innerText = "Onderweg...";
-        document.getElementById('status-tekst').innerText = "Volgende halte nadert";
         document.getElementById('tijds-verschil').innerText = "---";
     }
 }
