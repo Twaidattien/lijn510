@@ -58,6 +58,12 @@
     <p class="info-gps" id="gps-debug">GPS: Stand-by</p>
 </div>
 
+    <div style="background: #222; color: #00ff00; font-family: monospace; text-align: left; padding: 15px; margin: 20px auto; width: 85%; max-width: 550px; border-radius: 12px;">
+    <h3>Live Code Monitor</h3>
+    <div><b>Dichtste halte:</b> <span id="debug-stop-name">-</span></div>
+    <div><b>Afstand tot halte:</b> <span id="debug-stop-dist">-</span></div>
+</div>
+
 <script>
 // Volledige database van Lijn 510 op basis van de aangeleverde dienstregeling
 const haltesLijn510 = [
@@ -144,6 +150,10 @@ function analyseerLocatie(position) {
             dichtstbijzijndeHalte = halte;
         }
     });
+        if (dichtstbijzijndeHalte) {
+        document.getElementById('debug-stop-name').innerText = dichtstbijzijndeHalte.naam;
+        document.getElementById('debug-stop-dist').innerText = Math.round(minsteAfstand) + " meter";
+    }
     
     // Ruime straal van 500 meter voor betrouwbaarheid in de praktijk
     if (dichtstbijzijndeHalte && minsteAfstand < 500) {
