@@ -167,8 +167,8 @@ function analyseerLocatie(position) {
         document.getElementById('debug-stop-dist').innerText = Math.round(minsteAfstand) + " meter";
     }
 
-    // Zet de zoekstraal hier voor het testen buiten op 100 meter
-    if (dichtstbijzijndeHalte && minsteAfstand < 100) {
+    // Zet de zoekstraal hier voor het testen buiten op 150 meter
+    if (dichtstbijzijndeHalte && minsteAfstand < 150) {
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
         document.body.style.backgroundColor = "#e0e0e0"; 
