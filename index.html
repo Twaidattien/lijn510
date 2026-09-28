@@ -2,11 +2,10 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <!-- Icoontje voor het iPhone startscherm -->
-    <!-- Werkend Icoontje voor het iPhone startscherm -->
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMDA0Qjg3Ii8+PHRleHQgeT0iNzAiIHg9IjUwIiBmb250LXNpemU9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5CMPC90ZXh0Pjwvc3ZnPg==">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stadsbus Veendam 510 Assistent</title>
+    <!-- Icoontje voor het iPhone startscherm -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMDA0Qjg3Ii8+PHRleHQgeT0iNzAiIHg9IjUwIiBmb250LXNpemU9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5CMPC90ZXh0Pjwvc3ZnPg==">
     <style>
         body {
             margin: 0;
@@ -32,7 +31,7 @@
             box-sizing: border-box;
         }
         h1 { font-size: 2.2rem; margin: 0 0 10px 0; color: #222; }
-        .status-text { font-size: 2rem; font-weight: bold; uppercase; margin: 15px 0; }
+        .status-text { font-size: 2rem; font-weight: bold; text-transform: uppercase; margin: 15px 0; }
         .time-diff { font-size: 4.5rem; font-weight: 900; margin: 10px 0; }
         .info-gps { font-size: 1rem; color: #555; margin-top: 20px; }
         button {
@@ -115,7 +114,6 @@ function startBusTracking() {
     document.getElementById('halte-naam').innerText = "GPS opstarten...";
     
     if (navigator.geolocation) {
-        // Scherm actief houden via de browser Wake Lock API indien ondersteund
         if (navigator.wakeLock) { navigator.wakeLock.request('screen').catch(()=>{}); }
         
         watchId = navigator.geolocation.watchPosition(analyseerLocatie, toonGpsFout, {
@@ -147,11 +145,10 @@ function analyseerLocatie(position) {
         }
     });
     
-    // Straal van 75 meter om te bepalen of de bus daadwerkelijk bij de halte staat/rijdt
-    if (dichtstbijzijndeHalte && minsteAfstand < 75) {
+    // Ruime straal van 100 meter voor betrouwbaarheid in de praktijk
+    if (dichtstbijzijndeHalte && minsteAfstand < 100) {
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
-        // Tussen de haltes in kleurt het scherm neutraal wit/grijs
         document.body.style.backgroundColor = "#e0e0e0"; 
         document.getElementById('halte-naam').innerText = "Onderweg...";
         document.getElementById('status-tekst').innerText = "Volgende halte nadert";
@@ -165,49 +162,50 @@ function evalueerDienstregelingstijd(halte) {
     
     document.getElementById('halte-naam').innerText = halte.naam;
     
-    // Bereken het tijdsverschil in minuten binnen de 60-minutencyclus
+    // Bereken het verschil binnen een cyclus van 60 minuten
     let verschil = huidigeMinuut - halte.minuut;
     if (verschil > 30) verschil -= 60;
-    if (verschil < -30) verschil += 60;
-    
+    if (verschil < -30) volverstaan = verschil += 60;
+
+    let weergaveVerschil = verschil > 0 ? `+${verschil}` : verschil;
+    document.getElementById('tijds-verschil').innerText = weergaveVerschil;
+
+    // Kleurenschema op basis van punctualiteit
     if (verschil < 0) {
-        // TE VROEG -> ROOD
-        document.body.style.backgroundColor = "#ff4d4d"; 
-        document.getElementById('status-tekst').innerText = "TE VROEG (WACHTEN)";
-        document.getElementById('tijds-verschil').innerText = `${Math.abs(verschil)}m`;
-    } else if (verschil <= 2) {
-        // OP TIJD (tussen 0 en 2 minuten vertraging) -> GROEN
-        document.body.style.backgroundColor = "#2ecc71"; 
-        document.getElementById('status-tekst').innerText = "OP TIJD (DOORRIJDEN)";
-        document.getElementById('tijds-verschil').innerText = "OK";
+        // Te vroeg (Bus rijdt voor op schema)
+        document.body.style.backgroundColor = "#ffcccc"; // Rood
+        document.getElementById('status-tekst').innerText = "TE VROEG";
+    } else if (verschil <= 3) {
+        // Keurig op tijd (Marge van 0 tot 3 minuten vertraging)
+        document.body.style.backgroundColor = "#ccffcc"; // Groen
+        document.getElementById('status-tekst').innerText = "OP TIJD";
     } else {
-        // TE LAAT (meer dan 2 minuten vertraging) -> GEEL
-        document.body.style.backgroundColor = "#f1c40f"; 
+        // Te laat (Meer dan 3 minuten vertraging)
+        document.body.style.backgroundColor = "#fff3cd"; // Geel
         document.getElementById('status-tekst').innerText = "TE LAAT";
-        document.getElementById('tijds-verschil').innerText = `+${verschil}m`;
     }
 }
 
-// Haversine formule voor nauwkeurige afstandsberekening in meters
-function berekenAfstandInMeters(lat1, lon1, lat2, lon2) {
-    const R = 6371e3;
-    const phi1 = lat1 * Math.PI/180;
-    const phi2 = lat2 * Math.PI/180;
-    const deltaPhi = (lat2-lat1) * Math.PI/180;
-    const deltaLambda = (lon2-lon1) * Math.PI/180;
-
-    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
-              Math.cos(phi1) * Math.cos(phi2) *
-              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return R * c;
+function toonGpsFout(error) {
+    document.getElementById('gps-debug').innerText = `GPS Fout: ${error.message}`;
 }
 
-function toonGpsFout(err) {
-    document.getElementById('status-tekst').innerText = "GPS signaal verloren of geblokkeerd";
-    document.body.style.backgroundColor = "#7f8c8d";
+// Wiskundige Haversine-formule om de exacte afstand te berekenen
+function berekenAfstandInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Straal van de aarde in meters
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Afstand in meters
 }
 </script>
+
 </body>
 </html>
