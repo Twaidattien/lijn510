@@ -180,13 +180,13 @@ function evalueerDienstregelingstijd(halte) {
     document.getElementById('tijds-verschil').innerText = weergaveVerschil;
 
     if (verschil < 0) {
-        document.body.style.backgroundColor = "#ffcccc"; 
+        document.body.style.backgroundColor = "#ff3b30"; // Krachtig signaalrood (Apple stijl)
         document.getElementById('status-tekst').innerText = "TE VROEG";
     } else if (verschil <= 3) {
-        document.body.style.backgroundColor = "#ccffcc"; 
+        document.body.style.backgroundColor = "#34c759"; // Helder digitaal groen 
         document.getElementById('status-tekst').innerText = "OP TIJD";
     } else {
-        document.body.style.backgroundColor = "#fff3cd"; 
+        document.body.style.backgroundColor = "#ffcc00"; // Fel waarschuwingsgeel 
         document.getElementById('status-tekst').innerText = "TE LAAT";
     }
 }
