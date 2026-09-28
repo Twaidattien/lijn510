@@ -145,8 +145,8 @@ function analyseerLocatie(position) {
         }
     });
     
-    // Ruime straal van 100 meter voor betrouwbaarheid in de praktijk
-    if (dichtstbijzijndeHalte && minsteAfstand < 100) {
+    // Ruime straal van 500 meter voor betrouwbaarheid in de praktijk
+    if (dichtstbijzijndeHalte && minsteAfstand < 500) {
         evalueerDienstregelingstijd(dichtstbijzijndeHalte);
     } else {
         document.body.style.backgroundColor = "#e0e0e0"; 
