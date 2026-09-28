@@ -51,6 +51,8 @@
 <body>
 
 <div class="container" id="app-box">
+    <!-- PLAK DEZE REGEL HIER VOOR DE TIJD -->
+    <div id="actuele-tijd" style="font-size: 1.8rem; font-weight: bold; color: #555; margin-bottom: 10px;">--:--</div>
     <h1 id="halte-naam">Lijn 510 Veendam</h1>
     <p id="status-tekst">Klik hieronder om de tracking te starten</p>
     <div class="time-diff" id="tijds-verschil">--</div>
@@ -180,6 +182,11 @@ function analyseerLocatie(position) {
 function evalueerDienstregelingstijd(halte) {
     const nu = new Date();
     const huidigeMinuut = nu.getMinutes();
+
+    // PLAK DEZE REGELS HIER OM DE KLOK LIVE BIJ TE WERKEN
+    const uren = nu.getHours().toString().padStart(2, '0');
+    const minuten = huidigeMinuut.toString().padStart(2, '0');
+    document.getElementById('actuele-tijd').innerText = `${uren}:${minuten}`;
     
     document.getElementById('halte-naam').innerText = halte.naam;
     
