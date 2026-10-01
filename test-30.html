@@ -171,20 +171,21 @@ const haltesLijn510 = [
 
 let watchId = null;
 let huidigeHalteIndex = 0;
+// Schakelaar om te onthouden of de bus momenteel bij de halte staat
+let isBijHalte = false; 
+
 window.onload = function() {
-    // Start de timer die om de 10 seconden de klok én de stiptheid ververst
+    // Start de timer die om de 10 seconden de klok én de stiptheid verversst
     setInterval(updateKlokEnStiptheid, 10000);
     vulDropdownMenu();
 };
 
 function updateKlokEnStiptheid() {
-    // 1. Update de actuele kloktijd bovenin het scherm
     const nu = new Date();
     const uren = String(nu.getHours()).padStart(2, '0');
     const minuten = String(nu.getMinutes()).padStart(2, '0');
     document.getElementById('actuele-tijd').innerText = `${uren}:${minuten}`;
 
-    // 2. Zorg dat de stiptheid ALTIJD doorloopt, ook als de bus stilstaat
     const startBtn = document.getElementById('start-btn');
     if (startBtn && startBtn.style.display === 'none') {
         const doelHalte = haltesLijn510[huidigeHalteIndex];
@@ -219,9 +220,9 @@ function startBusTracking() {
             timeout: 5000
         });
         
-        // Voer direct een eerste stiptheidsberekening uit bij de start
         const doelHalte = haltesLijn510[huidigeHalteIndex];
         berekenStiptheid(doelHalte.minuut);
+        document.getElementById('halte-naam').innerText = doelHalte.naam;
     } else {
         alert("Fout: Jouw telefoon ondersteunt geen GPS.");
     }
@@ -241,16 +242,23 @@ function analyseerLocatie(position) {
     document.getElementById('debug-stop-dist').innerText = `${Math.round(afstand)}m`;
     document.getElementById('halte-naam').innerText = doelHalte.naam;
 
-    // We berekenen ALTIJD de stiptheid van de halte waar we NU zijn/staan
+    // Bereken ALTIJD de stiptheid van de halte waar we nu staan of naartoe rijden
     berekenStiptheid(doelHalte.minuut);
 
-    // PAS ALS DE BUS WEGRIJDT (afstand groter dan 55 meter), springen we naar de volgende halte
-    // We checken eerst of we dichtbij zijn geweest (afstand was klein)
-    if (afstand > 55 && acc < 40) {
-        // Zodra je buiten de 55 meter van de halte bent, springt hij pas naar de volgende
-        // Maar we activeren dit pas als de bus daadwerkelijk onderweg is
-        // Voor nu houden we de trigger simpel: als je buiten de straal bent, is het de volgende
+    // STAP 1: Als de bus binnen 55 meter komt, activeren we de halte-modus
+    if (afstand <= 55 && acc < 40) {
+        isBijHalte = true; 
+    }
+
+    // STAP 2: Pas als de bus er weer vandaan rijdt (afstand > 55m) ÉN we stonden er daadwerkelijk,
+    // springen we pas over naar de volgende halte voor de rest van de rit.
+    if (afstand > 55 && isBijHalte === true && acc < 40) {
+        isBijHalte = false; // Reset de schakelaar voor de volgende halte
         huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
+        
+        const volgende = haltesLijn510[huidigeHalteIndex];
+        document.getElementById('debug-stop-name').innerText = volgende.naam;
+        berekenStiptheid(volgende.minuut);
     }
 }
 
@@ -269,15 +277,15 @@ function berekenStiptheid(geplandeMinuut) {
     if (verschil < 0) {
         statusTekstEl.innerText = "TE VROEG";
         verschilEl.innerText = `-${Math.abs(verschil)}`;
-        boxEl.style.backgroundColor = "#ff0000";
+        boxEl.style.backgroundColor = "#ff0000"; // Rood = WACHTEN
     } else if (verschil >= 0 && verschil <= 2) {
         statusTekstEl.innerText = "OP TIJD";
         verschilEl.innerText = verschil > 0 ? `+${verschil}` : "0";
-        boxEl.style.backgroundColor = "#00ff00";
+        boxEl.style.backgroundColor = "#00ff00"; // Groen = VERTREKKEN
     } else {
         statusTekstEl.innerText = "TE LAAT";
         verschilEl.innerText = `+${verschil}`;
-        boxEl.style.backgroundColor = "#ffff00";
+        boxEl.style.backgroundColor = "#ffff00"; // Geel = VERTREKKEN (vertraging)
     }
 }
 
@@ -298,6 +306,7 @@ function berekenAfstand(lat1, lon1, lat2, lon2) {
 
 function handmatigeHalteWissel(richting) {
     huidigeHalteIndex = huidigeHalteIndex + richting;
+    isBijHalte = false; // Reset de schakelaar bij handmatig skippen
     
     if (huidigeHalteIndex < 0) {
         huidigeHalteIndex = haltesLijn510.length - 1;
