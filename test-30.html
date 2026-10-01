@@ -235,6 +235,12 @@ function analyseerLocatie(position) {
     
     document.getElementById('gps-debug').innerText = `GPS: ${Math.round(acc)}m`;
 
+    // TIJDELIJKE OMLEIDING: Als de app op de een of andere manier op index 43 (Halte 43) terechtkomt,
+    // dwingen we hem direct door naar index 44 (Halte 44).
+    if (huidigeHalteIndex === 43) {
+        huidigeHalteIndex = 44;
+    }
+
     const doelHalte = haltesLijn510[huidigeHalteIndex];
     const afstand = berekenAfstand(lat, lon, doelHalte.lat, doelHalte.lon);
     
@@ -242,7 +248,6 @@ function analyseerLocatie(position) {
     document.getElementById('debug-stop-dist').innerText = `${Math.round(afstand)}m`;
     document.getElementById('halte-naam').innerText = doelHalte.naam;
 
-    // Bereken ALTIJD de stiptheid van de halte waar we nu staan of naartoe rijden
     berekenStiptheid(doelHalte.minuut);
 
     // STAP 1: Als de bus binnen 55 meter komt, activeren we de halte-modus
@@ -250,24 +255,23 @@ function analyseerLocatie(position) {
         isBijHalte = true; 
     }
 
-    // STAP 2: Pas als de bus er weer vandaan rijdt (afstand > 55m) ÉN we stonden er daadwerkelijk,
-    // springen we pas over naar de volgende halte voor de rest van de rit.
+    // STAP 2: Pas als de bus er weer vandaan rijdt (afstand > 55m) ÉN we stonden er daadwerkelijk
     if (afstand > 55 && isBijHalte === true && acc < 40) {
         isBijHalte = false; // Reset de schakelaar voor de volgende halte
         
-        // TIJDELIJKE OMLEIDING: Als we vertrekken bij Halte 42 (index 43), 
-        // skippen we Halte 43 en springen direct naar Halte 44 (index 44 in de code).
-        // Let op: Halte 42 heeft index 42 in de code!
+        // Als we vertrekken bij Halte 42 (index 42), springen we direct naar Halte 44 (index 44)
         if (huidigeHalteIndex === 42) {
-            huidigeHalteIndex = 44; // Spring direct naar 44. Bocht Oosterdiep
+            huidigeHalteIndex = 44; 
         } else {
             huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
         }
         
         const volgende = haltesLijn510[huidigeHalteIndex];
-        document.getElementById('debug-stop-name').innerText = volgende.naam;
+        document.getElementById('debug-stop-name').innerText = penultimate = volgende.naam;
         berekenStiptheid(volgende.minuut);
     }
+}
+
 
 function berekenStiptheid(geplandeMinuut) {
     const nu = new Date();
