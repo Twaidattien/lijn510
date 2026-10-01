@@ -254,13 +254,20 @@ function analyseerLocatie(position) {
     // springen we pas over naar de volgende halte voor de rest van de rit.
     if (afstand > 55 && isBijHalte === true && acc < 40) {
         isBijHalte = false; // Reset de schakelaar voor de volgende halte
-        huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
+        
+        // TIJDELIJKE OMLEIDING: Als we vertrekken bij Halte 42 (index 43), 
+        // skippen we Halte 43 en springen direct naar Halte 44 (index 44 in de code).
+        // Let op: Halte 42 heeft index 42 in de code!
+        if (huidigeHalteIndex === 42) {
+            huidigeHalteIndex = 44; // Spring direct naar 44. Bocht Oosterdiep
+        } else {
+            huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
+        }
         
         const volgende = haltesLijn510[huidigeHalteIndex];
         document.getElementById('debug-stop-name').innerText = volgende.naam;
         berekenStiptheid(volgende.minuut);
     }
-}
 
 function berekenStiptheid(geplandeMinuut) {
     const nu = new Date();
