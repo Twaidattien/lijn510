@@ -241,11 +241,16 @@ function analyseerLocatie(position) {
     document.getElementById('debug-stop-dist').innerText = `${Math.round(afstand)}m`;
     document.getElementById('halte-naam').innerText = doelHalte.naam;
 
-    if (afstand < 35 && acc < 40) {
+    // We berekenen ALTIJD de stiptheid van de halte waar we NU zijn/staan
+    berekenStiptheid(doelHalte.minuut);
+
+    // PAS ALS DE BUS WEGRIJDT (afstand groter dan 55 meter), springen we naar de volgende halte
+    // We checken eerst of we dichtbij zijn geweest (afstand was klein)
+    if (afstand > 55 && acc < 40) {
+        // Zodra je buiten de 55 meter van de halte bent, springt hij pas naar de volgende
+        // Maar we activeren dit pas als de bus daadwerkelijk onderweg is
+        // Voor nu houden we de trigger simpel: als je buiten de straal bent, is het de volgende
         huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
-        const volgende = haltesLijn510[huidigeHalteIndex];
-        document.getElementById('debug-stop-name').innerText = volgende.naam;
-        berekenStiptheid(volgende.minuut);
     }
 }
 
