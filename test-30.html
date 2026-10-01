@@ -249,19 +249,19 @@ function berekenStiptheid(geplandeMinuut) {
     const verschilEl = document.getElementById('tijds-verschil');
     const boxEl = document.getElementById('app-box');
 
-    if (verschil === 0) {
-        statusTekstEl.innerText = "OP TIJD";
-        verschilEl.innerText = "0";
-        boxEl.style.backgroundColor = "#2ecc71";
-    } else if (verschil < 0) {
-        statusTekstEl.innerText = "TE VROEG";
-        verschilEl.innerText = Math.abs(verschil);
-        boxEl.style.backgroundColor = "#f1c40f";
-    } else {
-        statusTekstEl.innerText = "TE LAAT";
-        verschilEl.innerText = `+${verschil}`;
-        boxEl.style.backgroundColor = "#e74c3c";
-    }
+if (verschil < 0) {
+    statusTekstEl.innerText = "TE VROEG";
+    verschilEl.innerText = Math.abs(verschil);
+    boxEl.style.backgroundColor = "#ff0000"; // Felrood
+} else if (verschil >= 0 && verschil <= 2) {
+    statusTekstEl.innerText = "OP TIJD";
+    verschilEl.innerText = verschil;
+    boxEl.style.backgroundColor = "#00ff00"; // Felgroen
+} else {
+    statusTekstEl.innerText = "TE LAAT";
+    verschilEl.innerText = `+${verschil}`;
+    boxEl.style.backgroundColor = "#ffff00"; // Felgeel
+}
 }
 
 function berekenAfstand(lat1, lon1, lat2, lon2) {
