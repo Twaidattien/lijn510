@@ -292,7 +292,7 @@ function berekenAfstand(lat1, lon1, lat2, lon2) {
 }
 
 function handmatigeHalteWissel(richting) {
-    huidigeHalteIndex = huidigeHalteIndex + direction;
+    huidigeHalteIndex = huidigeHalteIndex + richting;
     
     if (huidigeHalteIndex < 0) {
         huidigeHalteIndex = haltesLijn510.length - 1;
