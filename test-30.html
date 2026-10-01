@@ -172,15 +172,24 @@ const haltesLijn510 = [
 let watchId = null;
 let huidigeHalteIndex = 0;
 window.onload = function() {
-    setInterval(updateKlok, 1000);
+    // Start de timer die om de 10 seconden de klok én de stiptheid ververst
+    setInterval(updateKlokEnStiptheid, 10000);
     vulDropdownMenu();
 };
 
-function updateKlok() {
+function updateKlokEnStiptheid() {
+    // 1. Update de actuele kloktijd bovenin het scherm
     const nu = new Date();
     const uren = String(nu.getHours()).padStart(2, '0');
     const minuten = String(nu.getMinutes()).padStart(2, '0');
     document.getElementById('actuele-tijd').innerText = `${uren}:${minuten}`;
+
+    // 2. Zorg dat de stiptheid ALTIJD doorloopt, ook als de bus stilstaat
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn && startBtn.style.display === 'none') {
+        const doelHalte = haltesLijn510[huidigeHalteIndex];
+        berekenStiptheid(doelHalte.minuut);
+    }
 }
 
 function vulDropdownMenu() {
@@ -209,6 +218,10 @@ function startBusTracking() {
             maximumAge: 0, 
             timeout: 5000
         });
+        
+        // Voer direct een eerste stiptheidsberekening uit bij de start
+        const doelHalte = haltesLijn510[huidigeHalteIndex];
+        berekenStiptheid(doelHalte.minuut);
     } else {
         alert("Fout: Jouw telefoon ondersteunt geen GPS.");
     }
@@ -227,13 +240,12 @@ function analyseerLocatie(position) {
     document.getElementById('debug-stop-name').innerText = doelHalte.naam;
     document.getElementById('debug-stop-dist').innerText = `${Math.round(afstand)}m`;
     document.getElementById('halte-naam').innerText = doelHalte.naam;
-    
-    berekenStiptheid(doelHalte.minuut);
 
     if (afstand < 35 && acc < 40) {
         huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
         const volgende = haltesLijn510[huidigeHalteIndex];
         document.getElementById('debug-stop-name').innerText = volgende.naam;
+        berekenStiptheid(volgende.minuut);
     }
 }
 
@@ -249,20 +261,19 @@ function berekenStiptheid(geplandeMinuut) {
     const verschilEl = document.getElementById('tijds-verschil');
     const boxEl = document.getElementById('app-box');
 
-if (verschil < 0) {
-    statusTekstEl.innerText = "TE VROEG";
-    verschilEl.innerText = `-${Math.abs(verschil)}`; // Voegt de min (-) toe
-    boxEl.style.backgroundColor = "#ff0000"; // Felrood
-} else if (verschil >= 0 && verschil <= 2) {
-    statusTekstEl.innerText = "OP TIJD";
-    // Toont een + bij 1 of 2 minuten, anders gewoon een 0
-    verschilEl.innerText = verschil > 0 ? `+${verschil}` : "0"; 
-    boxEl.style.backgroundColor = "#00ff00"; // Felgroen
-} else {
-    statusTekstEl.innerText = "TE LAAT";
-    verschilEl.innerText = `+${verschil}`; // Behoudt de plus (+)
-    boxEl.style.backgroundColor = "#ffff00"; // Felgeel
-}
+    if (verschil < 0) {
+        statusTekstEl.innerText = "TE VROEG";
+        verschilEl.innerText = `-${Math.abs(verschil)}`;
+        boxEl.style.backgroundColor = "#ff0000";
+    } else if (verschil >= 0 && verschil <= 2) {
+        statusTekstEl.innerText = "OP TIJD";
+        verschilEl.innerText = verschil > 0 ? `+${verschil}` : "0";
+        boxEl.style.backgroundColor = "#00ff00";
+    } else {
+        statusTekstEl.innerText = "TE LAAT";
+        verschilEl.innerText = `+${verschil}`;
+        boxEl.style.backgroundColor = "#ffff00";
+    }
 }
 
 function berekenAfstand(lat1, lon1, lat2, lon2) {
@@ -281,7 +292,7 @@ function berekenAfstand(lat1, lon1, lat2, lon2) {
 }
 
 function handmatigeHalteWissel(richting) {
-    huidigeHalteIndex = huidigeHalteIndex + richting;
+    huidigeHalteIndex = huidigeHalteIndex + direction;
     
     if (huidigeHalteIndex < 0) {
         huidigeHalteIndex = haltesLijn510.length - 1;
