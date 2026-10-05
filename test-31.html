@@ -250,18 +250,21 @@ function analyseerLocatie(position) {
 
     berekenStiptheid(doelHalte.minuut);
 
-    // STAP 1: Als de bus binnen 55 meter komt, activeren we de halte-modus
+    // STAP 1: Als de bus binnen 55 meter komt, activeren we de halte-modus (normale stop)
     if (afstand <= 55 && acc < 40) {
         isBijHalte = true; 
     }
 
-    // STAP 2: Pas als de bus er weer vandaan rijdt (afstand > 55m) ÉN we stonden er daadwerkelijk
-    if (afstand > 55 && isBijHalte === true && acc < 40) {
-        isBijHalte = false; // Reset de schakelaar voor de volgende halte
+    // STAP 2: Vertrek óf Passeren zonder te stoppen
+    // Situatie A: We stonden er daadwerkelijk (isBijHalte === true) en rijden nu weg (> 55m)
+    // Situatie B: Voor halte 32 en 34 rijden we door. Als de afstand groter wordt dan 150m en het is het actieve doel, skippen we hem automatisch.
+    const isDoenietStopHalte = (huidigeHalteIndex === 32 || huidigeHalteIndex === 34); // Indexen voor halte 32 (De Breehorn 1) en 34 (WC Skagerrak Terug)
+
+    if ((afstand > 55 && isBijHalte === true && acc < 40) || (isDoenietStopHalte && afstand > 150 && acc < 40)) {
+        isBijHalte = false; // Reset de schakelaar
         
-        // OMLEIDING LOGICA: Als we vertrekken bij Halte 42 (nu index 43 door de toevoeging van 26a en 32a),
-        // skippen we halte 43 (index 44) volledig en springen we direct naar Halte 44 (index 46).
-        if (huidigeHalteIndex === 43) {
+        // De omleidingslogica die we al hadden voor halte 42 -> 44
+        if (huidigeHalteIndex === 43) { 
             huidigeHalteIndex = 45; 
         } else {
             huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
