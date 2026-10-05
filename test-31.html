@@ -316,21 +316,25 @@ function berekenAfstand(lat1, lon1, lat2, lon2) {
 }
 
 function handmatigeHalteWissel(richting) {
-    huidigeHalteIndex = huidigeHalteIndex + richting;
-    isBijHalte = false; // Reset de schakelaar bij handmatig skippen
-    
-    if (huidigeHalteIndex < 0) {
-        huidigeHalteIndex = haltesLijn510.length - 1;
+    // Richting 1 = Volgende knop, Richting -1 = Vorige knop
+
+    if (richting === 1) {
+        // Als we op Halte 42 (index 44) staan en op 'Volgende' klikken,
+        // skippen we Halte 43 (index 45) en springen we direct naar Halte 44 (index 46).
+        if (huidigeHalteIndex === 44) {
+            huidigeHalteIndex = 46;
+        } else {
+            huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
+        }
+    } else if (richting === -1) {
+        // Als we op Halte 44 (index 46) staan en op 'Vorige' klikken,
+        // skippen we Halte 43 (index 45) en springen we direct terug naar Halte 42 (index 44).
+        if (huidigeHalteIndex === 46) {
+            huidigeHalteIndex = 44;
+        } else {
+            huidigeHalteIndex = (huidigeHalteIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
+        }
     }
-    if (huidigeHalteIndex >= haltesLijn510.length) {
-        huidigeHalteIndex = 0;
-    }
-    
-    const target = haltesLijn510[huidigeHalteIndex];
-    document.getElementById('debug-stop-name').innerText = target.naam;
-    document.getElementById('halte-naam').innerText = target.naam;
-    berekenStiptheid(target.minuut);
-}
 
 function toonGpsFout(error) {
     document.getElementById('gps-debug').innerText = `GPS Fout: ${error.message}`;
