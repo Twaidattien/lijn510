@@ -278,6 +278,7 @@ function analyseerLocatie(position) {
         
         const volgende = haltesLijn510[huidigeHalteIndex];
         document.getElementById('debug-stop-name').innerText = volgende.naam;
+        document.getElementById('halte-naam').innerText = volgende.naam; // <-- Deze toevoegen voor directe UI sync!
         berekenStiptheid(volgende.minuut);
     }
 }
