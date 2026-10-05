@@ -235,8 +235,8 @@ function analyseerLocatie(position) {
     
     document.getElementById('gps-debug').innerText = `GPS: ${Math.round(acc)}m`;
 
-    // TIJDELIJKE OMLEIDING: Als de app op de een of andere manier op index 43 (Halte 43) terechtkomt,
-    // dwingen we hem direct door naar index 44 (Halte 44).
+    // VEILIGHEIDSCHECK: Als de app op de een of andere manier toch op index 43 (Halte 43) start of belandt,
+    // dwingen we hem direct door naar index 44 (Halte 44) zodat halte 43 nooit actief wordt.
     if (huidigeHalteIndex === 43) {
         huidigeHalteIndex = 44;
     }
@@ -259,7 +259,8 @@ function analyseerLocatie(position) {
     if (afstand > 55 && isBijHalte === true && acc < 40) {
         isBijHalte = false; // Reset de schakelaar voor de volgende halte
         
-        // Als we vertrekken bij Halte 42 (index 42), springen we direct naar Halte 44 (index 44)
+        // GECORRIGEERDE LOGICA: Als we vertrekken bij Halte 42 (index 42), 
+        // skippen we halte 43 volledig en springen we direct naar Halte 44 (index 44)
         if (huidigeHalteIndex === 42) {
             huidigeHalteIndex = 44; 
         } else {
@@ -267,10 +268,12 @@ function analyseerLocatie(position) {
         }
         
         const volgende = haltesLijn510[huidigeHalteIndex];
-        document.getElementById('debug-stop-name').innerText = penultimate = volgende.naam;
+        // Ook hier de typo 'penultimate =' weggehaald voor cleanere code
+        document.getElementById('debug-stop-name').innerText = volgende.naam; 
         berekenStiptheid(volgende.minuut);
     }
 }
+
 
 
 function berekenStiptheid(geplandeMinuut) {
