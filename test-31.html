@@ -317,35 +317,41 @@ function berekenAfstand(lat1, lon1, lat2, lon2) {
 
 function handmatigeHalteWissel(richting) {
     // Richting 1 = Volgende knop, Richting -1 = Vorige knop
+
     if (richting === 1) {
-        // Als we op Halte 42 (index 44) staan en op 'Volgende' klikken,
-        // skippen we Halte 43 (index 45) en springen we direct naar Halte 44 (index 46).
-        if (huidigeHalteIndex === 44) {
-            huidigeHalteIndex = 46;
+        // Als we op Halte 42 (index 43) staan en op 'Volgende' klikken,
+        // skippen we Halte 43 (index 44) volledig en springen direct naar Halte 44 (index 45).
+        if (huidigeHalteIndex === 43) {
+            huidigeHalteIndex = 45;
         } else {
             huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
         }
     } else if (richting === -1) {
-        // Als we op Halte 44 (index 46) staan en op 'Vorige' klikken,
-        // skippen we Halte 43 (index 45) en springen we direct terug naar Halte 42 (index 44).
-        if (huidigeHalteIndex === 46) {
-            huidigeHalteIndex = 44;
+        // Als we op Halte 44 (index 45) staan en op 'Vorige' klikken,
+        // skippen we Halte 43 (index 44) en springen direct terug naar Halte 42 (index 43).
+        if (huidigeHalteIndex === 45) {
+            huidigeHalteIndex = 43;
         } else {
             huidigeHalteIndex = (huidigeHalteIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
         }
     }
 
-    // Direct de live monitor en interface bijwerken na de handmatige wissel
+    // EXTRA HARD VANGNET: Mocht de app ooit per ongeluk toch op index 44 (Halte 43) belanden,
+    // dan corrigeren we dit direct naar index 45 (Halte 44) vóórdat het scherm ververst.
+    if (huidigeHalteIndex === 44) {
+        huidigeHalteIndex = 45;
+    }
+
+    // Direct de live monitor en interface bijwerken
     const actieveHalte = haltesLijn510[huidigeHalteIndex];
     document.getElementById('debug-stop-name').innerText = actieveHalte.naam;
     document.getElementById('halte-naam').innerText = actieveHalte.naam;
-    document.getElementById('debug-stop-dist').innerText = "-"; // Afstand resetten tot volgende GPS-update
+    document.getElementById('debug-stop-dist').innerText = "-"; 
     
-    // Als je de functie berekenStiptheid gebruikt, roepen we die hier ook aan:
     if (typeof berekenStiptheid === "function") {
         berekenStiptheid(actieveHalte.minuut);
     }
-} // <-- Dit is de cruciale sluitaccolade die ontbrak!
+}
 
 function toonGpsFout(error) {
     document.getElementById('gps-debug').innerText = `GPS Fout: ${error.message}`;
