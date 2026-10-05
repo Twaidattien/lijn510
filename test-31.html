@@ -235,8 +235,8 @@ function analyseerLocatie(position) {
     
     document.getElementById('gps-debug').innerText = `GPS: ${Math.round(acc)}m`;
 
-    // VEILIGHEIDSCHECK: Als de app op de een of andere manier toch op index 44 (Halte 43) start of belandt,
-    // dwingen we hem direct door naar index 45 (Halte 44) zodat halte 43 nooit actief getoond wordt.
+    // VEILIGHEIDSCHECK: Mocht de app door GPS-afwijkingen toch op index 44 (Halte 43) belanden,
+    // dan dwingen we hem direct door naar index 45 (Halte 44) zodat halte 43 nooit getoond wordt.
     if (huidigeHalteIndex === 44) {
         huidigeHalteIndex = 45;
     }
@@ -250,23 +250,29 @@ function analyseerLocatie(position) {
 
     berekenStiptheid(doelHalte.minuut);
 
-    // STAP 1: Als de bus binnen 55 meter komt, activeren we de halte-modus (normale stop)
+    // STAP 1: Als de bus binnen 55 meter komt, activeren we de normale halte-modus
     if (afstand <= 55 && acc < 40) {
         isBijHalte = true; 
     }
 
-    // STAP 2: Vertrek óf Passeren zonder te stoppen
-    // Situatie A: We stonden er daadwerkelijk (isBijHalte === true) en rijden nu weg (> 55m)
-    // Situatie B: Voor halte 32 en 34 rijden we door. Als de afstand groter wordt dan 150m en het is het actieve doel, skippen we hem automatisch.
-    const isDoenietStopHalte = (huidigeHalteIndex === 32 || huidigeHalteIndex === 34); // Indexen voor halte 32 (De Breehorn 1) en 34 (WC Skagerrak Terug)
+    // STAP 2: Bepalen of we doorrijden of de halte passeren
+    // We controleren of de huidige halte een 'optionele' inrijhalte is (index 32 of index 35)
+    const isOptioneleHalte = (huidigeHalteIndex === 32 || huidigeHalteIndex === 35);
 
-    if ((afstand > 55 && isBijHalte === true && acc < 40) || (isDoenietStopHalte && afstand > 150 && acc < 40)) {
-        isBijHalte = false; // Reset de schakelaar
+    // Conditie 1: We stonden binnen de 55m (isBijHalte is true) en rijden nu weer weg (>55m)
+    // Conditie 2: Het is een optionele halte, we rijden over de hoofdweg door en passeren de 150m grens
+    const magDoorschakelen = (afstand > 55 && isBijHalte === true && acc < 40) || 
+                             (isOptioneleHalte && afstand > 150 && acc < 40);
+
+    if (magDoorschakelen) {
+        isBijHalte = false; // Reset de schakelaar voor de volgende halte
         
-        // De omleidingslogica die we al hadden voor halte 42 -> 44
-        if (huidigeHalteIndex === 43) { 
+        // TIJDELIJKE OMLEIDING: Als we vertrekken bij Halte 42 (index 43),
+        // skippen we Halte 43 (index 44) en springen we direct naar Halte 44 (index 45)
+        if (huidigeHalteIndex === 43) {
             huidigeHalteIndex = 45; 
         } else {
+            // Normale opvolging naar de volgende halte in de lijst
             huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
         }
         
