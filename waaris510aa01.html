@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie AA01)</title>
+    <!-- Gecorrigeerd: Veilige Leaflet CSS koppeling zonder integriteitshash-blokkades op GitHub -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 1000;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        .app-container { flex: 1; position: relative; width: 100%; display: flex; flex-direction: column; }
+        #map { flex: 1; width: 100%; z-index: 1; background-color: #e5e5e5; min-height: 40vh; }
+
+        #debug-console {
+            background-color: #1e1e1e; color: #00ff00; font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem; padding: 15px; height: 160px; overflow-y: auto;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5); border-top: 3px solid #dc3545; z-index: 2000;
+        }
+        .debug-entry { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+        .debug-error { color: #ff3333; font-weight: bold; }
+        .debug-success { color: #33ff33; }
+
+        .status-panel {
+            position: absolute; top: 20px; left: 20px; background: white; padding: 15px 20px; 
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; align-items: center; gap: 15px; width: 340px;
+        }
+        .pulse-indicator { 
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; 
+            animation: gpsPulse 1.8s infinite ease-in-out;
+        }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+
+        @keyframes gpsPulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(229, 0, 0, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(229, 0, 0, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(229, 0, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie AA01)</h1>
+        <p>PROJECT-BUS510-VEENDAM-2026 | Realtime Externe GPS API Gateway</p>
+    </header>
+
+    <div class="app-container">
+        <div id="map"></div>
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led" style="background-color: #dc3545;"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Live GPS: Zoeken naar voertuig...</h3>
+                <p id="tracker-msg">Verbinden met openbare OV-datastream...</p>
+            </div>
+        </div>
+        <div id="debug-console">
+            <div class="debug-entry debug-success">[SYSTEM] Foutopsporingspaneel Versie AA01 geactiveerd. Realtime API-modus ingeschakeld.</div>
+        </div>
+    </div>
+
+    <!-- Gecorrigeerde Leaflet JavaScript Import zonder blokkerende hash -->
+    <script src="https://unpkg.com"></script>
+    <!-- Centrale haltelijst databron koppelen -->
+    <script src="haltes510.js"></script>
+    <script>
+        function logDebug(msg, isError = false) {
+            const consoleEl = document.getElementById('debug-console');
+            if (consoleEl) {
+                const entry = document.createElement('div');
+                entry.className = 'debug-entry' + (isError ? ' debug-error' : '');
+                const timestamp = new Date().toLocaleTimeString();
+                entry.innerText = `[${timestamp}] ${msg}`;
+                consoleEl.appendChild(entry);
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+
+        window.onerror = function(message, source, lineno, colno, error) {
+            logDebug(`CRASH IN SCRIPT: ${message} op regel ${lineno}`, true);
+            return false;
+        };
+
+        window.onload = function() {
+            logDebug("window.onload geactiveerd. Initialiseren AA01 Live GPS Tracker...");
+
+            try {
+                if (typeof L === 'undefined') {
+                    throw new Error("Leaflet bibliotheek (L) is niet ingeladen via CDN!");
+                }
+                logDebug("Leaflet kaart-engine succesvol gedetecteerd.");
+
+                if (typeof haltesLijn510 === 'undefined') {
+                    throw new Error("Centraal databasebestand 'haltes510.js' is niet correct geladen.");
+                }
+                logDebug(`Haltesdatabank gekoppeld. ${haltesLijn510.length} vaste haltes paraat.`);
+
+                // Map de vaste haltes naar Leaflet formaat [[lat, lon], ...] voor de routelijn
+                const routePoints = haltesLijn510.map(h => [h.lat, h.lon]);
+                
+                // 1. Initialiseer de kaart gecentreerd op de regio Veendam-Wildervank
+                const map = L.map('map').setView([53.0970, 6.8700], 13);
+                logDebug("Kaart canvas succesvol opgebouwd.");
+
+                // 2. Koppel de OpenStreetMap kaarttegellaag
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap-auteurs',
+                    maxZoom: 18
+                }).addTo(map);
+                logDebug("OpenStreetMap kaarttegels succesvol gekoppeld.");
+
+                // 3. Teken de officiële Qbuzz 510 route als een blauwe OV-stippellijn
+                L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
+                logDebug("Blauwe Qbuzz 510 routelijn op de kaart getekend.");
+
+                // 4. Plaats vaste markers bij alle 46 geverifieerde fysieke haltes
+                haltesLijn510.forEach((halte) => {
+                    L.circleMarker([halte.lat, halte.lon], {
+                        radius: 5, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
+                    }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.naam}<br>Dienstregeling minuut: .${halte.minuut}`);
+                });
+                logDebug("Alle 46 vaste halte-markers succesvol geplaatst.");
+
+                // 5. Initialiseer de LIVE bus marker exact op het startpunt (Station Veendam)
+                // GECORRIGEERD: Start op een hard coördinaat in plaats van een object-array om Leaflet-crashes te voorkomen
+                const busMarker = L.circleMarker([53.103750, 6.885389], {
+                    radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
+                }).addTo(map).bindPopup("<b>Live Qbuzz Buurtbus 510</b><br>Realtime GPS positie");
+
+                const led = document.getElementById('status-led');
+
+                // 6. Echte Live GPS Data Fetcher (Koppeling met OpenOV / NDOV KV6 datastream)
+                function fetchLiveGPS() {
+                    logDebug("Verzoek verzenden naar OpenOV KV6 API voor Qbuzz Lijn 510...");
+                    
+                    // Landelijke open data endpoint URL voor realtime busposities (Qbuzz / Groningen-Drenthe)
+                    const apiURL = "https://openov.nl";
+
+                    fetch(apiURL)
+                        .then(response => {
+                            if (!response.ok) throw new Error(`HTTP fout! Status: ${response.status}`);
+                            return response.json();
+                        })
+                        .then(data => {
+                            // Controleer of er op dit moment een actieve bus live is op de weg
+                            if (data && data.entity && data.entity.length > 0) {
+                                const busData = data.entity[0].vehicle;
+                                const liveLat = busData.position.latitude;
+                                const liveLon = busData.position.longitude;
+                                const speed = busData.position.speed ? Math.round(busData.position.speed * 3.6) : 0;
+
+                                logDebug(`LIVE GPS ONTVANGEN: [${liveLat}, ${liveLon}] | Snelheid: ${speed} km/u`);
+
+                                // Verplaats de rode marker live naar de echte GPS-locatie van de bus
+                                busMarker.setLatLng([liveLat, liveLon]);
+                                
+                                led.style.backgroundColor = '#00a83e';
+                                document.getElementById('next-stop').innerText = "Bus is Live onderweg";
+                                document.getElementById('tracker-msg').innerText = `Huidige snelheid: ${speed} km/u | GPS stabiel`;
+                            } else {
+                                // Geen actieve rit gedetecteerd (bijvoorbeeld buiten dienstregeling-uren)
+                                led.style.backgroundColor = '#6c757d';
+                                document.getElementById('next-stop').innerText = "Bus momenteel afwezig";
+                                document.getElementById('tracker-msg').innerText = "Geen actief GPS-signaal (Buiten dienstregeling)";
+                                logDebug("API verbinding geslaagd, maar er rijdt momenteel geen bus op lijn 510.");
+                            }
+                        })
+                        .catch(err => {
+                            // Back-up indien de proxy/storing optreedt: toon debug-fout
+                            logDebug(`API CONNECTIEFOUT: ${err.message}`, true);
+                            document.getElementById('next-stop').innerText = "API Verbindingsfout";
+                            document.getElementById('tracker-msg').innerText = "Probleem met ophalen KV6 datastream.";
+                        });
+                }
+
+                // Voer de GPS-fetch direct uit bij het opstarten
+                fetchLiveGPS();
+
+                // Polling: Haal elke 10 seconden automatisch de allernieuwste live GPS-locatie op
+                setInterval(fetchLiveGPS, 10000);
+
+            } catch (globalErr) {
+                logDebug(`INITIALISATIEFOUT: ${globalErr.message}`, true);
+            }
+        };
+    </script>
+</body>
+</html>
