@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie Z10)</title>
+    <!-- Officiële Leaflet CSS via Cloudflare CDN -->
+    <link rel="stylesheet" href="https://cloudflare.com" integrity="sha512-Zcn6diiQFYG7TrLwSIsmdnS7S96v6zYp5U1SpxN0M8CgDkF85vj2wM8D1S7S4l4I+6CgD9D7C8M7M7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 1000;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        .app-container { flex: 1; position: relative; width: 100%; height: 100%; }
+        #map { width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; background-color: #e5e5e5; }
+
+        .status-panel {
+            position: absolute; top: 20px; left: 20px; background: white; padding: 15px 20px; 
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; align-items: center; gap: 15px; width: 340px;
+        }
+        .pulse-indicator { 
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; 
+            animation: gpsPulse 1.8s infinite ease-in-out;
+        }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+
+        @keyframes gpsPulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0, 168, 62, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0); }
+        }
+
+        @media (max-width: 767px) {
+            .status-panel { bottom: 20px; top: auto; left: 50%; transform: translateX(-50%); width: 90%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie Z10)</h1>
+        <p>PROJECT-BUS510-VEENDAM-2026 | Officiële Route Veendam Station - Wildervank</p>
+    </header>
+
+    <div class="app-container">
+        <div id="map"></div>
+
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led" style="background-color: #6c757d;"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Volgende halte: Berekenen...</h3>
+                <p id="tracker-msg">Live GPS-simulatie actief</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Officiële Leaflet JS via Cloudflare CDN -->
+    <script src="https://cloudflare.com" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <script>
+        window.onload = function() {
+            // Uw exacte, geverifieerde haltelijst en coördinaten uit Lijn 510
+            const haltes = [
+                { naam: "1. Station Veendam (Vertrek)", lat: 53.103750, lon: 6.885389 },
+                { naam: "2. Jakob Bruggemalaan (Heen)", lat: 53.110548, lon: 6.886444 },
+                { naam: "3. Beneden Oosterdiep", lat: 53.114273, lon: 6.887702 },
+                { naam: "4. Nassaustraat", lat: 53.115265, lon: 6.883968 },
+                { naam: "5. Meridiaan", lat: 53.114705, lon: 6.883013 },
+                { naam: "6. Oranjeborgh", lat: 53.112971, lon: 6.882369 },
+                { naam: "7. Voormolenstraat", lat: 53.112327, lon: 6.885490 },
+                { naam: "8. Jakob Bruggemalaan (Centr.)", lat: 53.109674, lon: 6.885534 },
+                { naam: "9. van Beresteijnstraat", lat: 53.106042, lon: 6.881161 },
+                { naam: "10. Parkeerterrein Promenade", lat: 53.106213, lon: 6.878956 },
+                { naam: "11. Hertenkampstraat", lat: 53.107805, lon: 6.8765188 },
+                { naam: "12. R.H. van Deestweg", lat: 53.107160, lon: 6.871254 },
+                { naam: "13. Zilverlaan", lat: 53.107577, lon: 6.869766 },
+                { naam: "14. Steenstraat", lat: 53.106727, lon: 6.868893 },
+                { naam: "15. Parkflat", lat: 53.105448, lon: 6.865948 },
+                { naam: "16. Zeilstraat (Heen)", lat: 53.103832, lon: 6.861367 },
+                { naam: "17. Oostlaan (Heen)", lat: 53.103218, lon: 6.859072 },
+                { naam: "18. Finse Golf (Heen)", lat: 53.099909, lon: 6.859479 },
+                { naam: "19. Skagerrak (Heen)", lat: 53.096740, lon: 6.858971 },
+                { naam: "20. WC Skagerrak (Heen)", lat: 53.095871, lon: 6.860390 },
+                { naam: "21. Eems", lat: 53.094080, lon: 6.856033 },
+                { naam: "22. Gelrelaan", lat: 53.090887, lon: 6.854126 },
+                { naam: "23. Rietgors", lat: 53.083053, lon: 6.849812 },
+                { naam: "24. Langebosschedijk", lat: 53.0883576, lon: 6.854113 },
+                { naam: "25. Groen van Prinstererlaan", lat: 53.084480, lon: 6.860535 },
+                { naam: "26. Westerhave", lat: 53.082164, lon: 6.859129 },
+                { naam: "26a. Bijleveldcentrum", lat: 53.081852, lon: 6.862959 },
+                { naam: "27. Zuideinde", lat: 53.083897, lon: 6.864186 },
+                { naam: "28. Apollolaan", lat: 53.085261, lon: 6.865775 },
+                { naam: "29. 5e Laan", lat: 53.090063, lon: 6.869582 },
+                { naam: "30. Nijverheidsstraat", lat: 53.094151, lon: 6.872132 },
+                { naam: "31. Sint Franciscus", lat: 53.097836, lon: 6.872422 },
+                { naam: "32. De Breehorn 1", lat: 53.099085, lon: 6.870248 },
+                { naam: "32a. De Breehorn 2", lat: 53.098315, lon: 6.868664 },
+                { naam: "33. Lubecker Bocht", lat: 53.096641, lon: 6.866848 },
+                { naam: "34. WC Skagerrak (Terug)", lat: 53.095871, lon: 6.860390 },
+                { naam: "35. Skagerrak (Terug)", lat: 53.096987, lon: 6.859315 },
+                { naam: "36. Finse Golf (Terug)", lat: 53.099263, lon: 6.859684 },
+                { naam: "37. Oostlaan (Terug)", lat: 53.1027222, lon: 6.8597222 },
+                { naam: "38. Zeilstraat (Terug)", lat: 53.103801, lon: 6.862360 },
+                { naam: "39. Zwembad", lat: 53.105384, lon: 6.867356 },
+                { naam: "40. Kazemierstraat", lat: 53.105209, lon: 6.871542 },
+                { naam: "41. Lidl en Poiesz", lat: 53.105327, lon: 6.874180 },
+                { naam: "42. Kerkplein", lat: 53.105908, lon: 6.875570 },
+                { naam: "43. Raadhuisplein 5", lat: 53.104217, lon: 6.877558 },
+                { naam: "44. Bocht Oosterdiep", lat: 53.104468, lon: 6.880000 }
+            ];
+            // Zet de haltes om naar een Leaflet-coördinatenlijst [lat, lon]
+            const routePoints = haltes.map(h => [h.lat, h.lon]);
+            
+            // 1. Initialiseer de kaart gecentreerd op Veendam Centrum
+            const map = L.map('map').setView([53.0970, 6.8700], 13);
+
+            // 2. Koppel de OpenStreetMap kaarttegels
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap-auteurs',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Dwing GitHub Pages om alle kaartdelen direct sluitend te renderen
+            setTimeout(function(){ map.invalidateSize(); }, 200);
+
+            // 3. Teken de route als een blauwe OV-stippellijn
+            L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
+
+            // 4. Plaats vaste markers bij alle 46 geverifieerde haltes
+            haltes.forEach((halte) => {
+                L.circleMarker([halte.lat, halte.lon], {
+                    radius: 5, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.naam}`);
+            });
+
+            // 5. Dienstregeling-tijdscontrole op basis van de echte computerklok
+            const nu = new Date();
+            const day = nu.getDay(); // 0 = Zondag, 1 = Maandag, etc.
+            const hours = nu.getHours();
+            const minutes = nu.getMinutes();
+            const tijdInMinuten = (hours * 60) + minutes;
+
+            let rijdtNu = false;
+            if (day === 1) { // Maandag: 12:40 - 16:18
+                rijdtNu = (tijdInMinuten >= 760 && tijdInMinuten <= 978);
+            } else if (day >= 2 && day <= 6) { // Dinsdag t/m Zaterdag: 10:42 - 16:18
+                rijdtNu = (tijdInMinuten >= 642 && tijdInMinuten <= 978);
+            }
+
+            const led = document.getElementById('status-led');
+            
+            // Initialiseer de live bus marker exact op de coördinaten van Station Veendam
+            const busMarker = L.circleMarker([53.103750, 6.885389], {
+                radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
+            }).bindPopup("<b>Buurtbus 510</b>");
+
+            let currentLeg = 0;
+            let progress = 0;
+            const stepsPerLeg = 100; // Snelheid van de bus tussen haltes
+
+            if (rijdtNu) {
+                busMarker.addTo(map);
+                led.style.backgroundColor = '#00a83e';
+                updateBusTracking();
+            } else {
+                led.style.backgroundColor = '#6c757d';
+                document.getElementById('next-stop').innerText = "Bus buiten dienst";
+                document.getElementById('tracker-msg').innerText = "Buiten de actuele dienstregeling";
+            }
+
+            // 6. Realtime tracking-motor met harde array-indexering
+            function updateBusTracking() {
+                let start = routePoints[currentLeg];
+                let end = routePoints[(currentLeg + 1) % routePoints.length];
+
+                // Wiskundig waterdichte uitsplitsing om NaN-crashes te voorkomen
+                let lat = start[0] + (end[0] - start[0]) * (progress / stepsPerLeg);
+                let lng = start[1] + (end[1] - start[1]) * (progress / stepsPerLeg);
+                
+                busMarker.setLatLng([lat, lng]);
+
+                let nextHalte = haltes[(currentLeg + 1) % haltes.length];
+                document.getElementById('next-stop').innerText = `Volgende halte: ${nextHalte.naam}`;
+
+                progress++;
+                if (progress > stepsPerLeg) {
+                    progress = 0;
+                    currentLeg = (currentLeg + 1) % routePoints.length;
+                }
+
+                setTimeout(updateBusTracking, 50); 
+            }
+        };
+    </script>
+</body>
+</html>
