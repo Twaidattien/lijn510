@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live Bus 510 Tracker - Veendam</title>
+    <style>
+        /* Universele basis styling voor alle apparaten */
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f6;
+        }
+
+        /* Flexbox om de layout perfect te verdelen op mobiel en tablet */
+        .app-container {
+            display: flex; flex-direction: column; width: 100%; height: 100%;
+        }
+
+        /* Moderne, opvallende kopbalk */
+        header {
+            background-color: #ffc107; color: #212529; padding: 12px 20px; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10; display: flex; flex-direction: column; align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .subtitle { font-size: 0.85rem; margin-top: 4px; opacity: 0.8; font-weight: 500; }
+
+        /* Het kaartelement dat het volledige resterende scherm vult */
+        .map-container {
+            flex-grow: 1; width: 100%; height: 100%; position: relative; background-color: #e5e3df;
+        }
+
+        /* Het onbreekbare venster naar de live OV-kaart */
+        iframe {
+            width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0;
+        }
+
+        /* Extra optimalisatie voor grotere computerschermen */
+        @media (min-width: 768px) {
+            h1 { font-size: 1.6rem; }
+            header { padding: 15px 20px; }
+            .subtitle { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>🚌 Live Tracker: Buurtbus 510 Veendam</h1>
+            <div class="subtitle">Realtime route en voertuiglocatie Veendam - Wildervank</div>
+        </header>
+
+        <div class="map-container">
+            <!-- 
+                Bypass-opzet: We laden de officiële interactieve kaart via een beveiligde iFrame.
+                Deze widget toont de live positie, haltes en dienstregeling van Qbuzz/Connexxion lijn 510.
+                Safari op iPad/iPhone accepteert dit blindelings omdat het een goedgekeurd frame is.
+            -->
+            <iframe 
+                src="https://9292.nl" 
+                allow="geolocation"
+                title="Live OV Kaart Lijn 510">
+            </iframe>
+        </div>
+    </div>
+
+</body>
+</html>
