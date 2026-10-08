@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie Z)</title>
+    <!-- Open-source Leaflet Kaartbibliotheek CSS -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 10;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        .app-container { flex: 1; position: relative; width: 100%; height: 100%; }
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        .status-panel {
+            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+            background: white; padding: 15px 20px; border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 1000;
+            display: flex; align-items: center; gap: 15px; width: 90%; max-width: 420px;
+        }
+        .pulse-indicator {
+            width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+        }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+
+        @media (min-width: 768px) {
+            .status-panel { bottom: unset; top: 20px; left: 20px; transform: none; width: 340px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie Z)</h1>
+        <p>PROJECT-BUS510-VEENDAM-2026 | Route Veendam Station - Wildervank</p>
+    </header>
+
+    <div class="app-container">
+        <div id="map"></div>
+
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Volgende halte: Berekenen...</h3>
+                <p id="tracker-msg">Live GPS-simulatie actief</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Open-source Leaflet Kaartbibliotheek JS -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        const haltes = [
+            { name: "Veendam Station (Perron B)", coord: [53.1012, 6.7534] },
+            { name: "Veendam Centrum", coord: [53.1041, 6.7482] },
+            { name: "Langebosschedijk", coord: [53.1070, 6.7495] },
+            { name: "Zwembad (Sportcomplex)", coord: [53.1115, 6.7540] },
+            { name: "Winkelcentrum Skagerrak", coord: [53.1090, 6.7620] },
+            { name: "Finse Golf", coord: [53.1055, 6.7645] },
+            { name: "Wildervank, Westerhave", coord: [53.0872, 6.7451] },
+            { name: "Veendam Station (Eindpunt)", coord: [53.1012, 6.7534] }
+        ];
+
+        const routePoints = haltes.map(h => h.coord);
+        
+        // 1. Initialiseer de kaart gecentreerd op de regio Veendam-Wildervank
+        const map = L.map('map').setView([53.0970, 6.7530], 13);
+
+        // 2. Laad de OpenStreetMap kaarttegels op de achtergrond
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap-auteurs'
+        }).addTo(map);
+
+        // 3. Teken de route als een blauwe OV-lijn
+        L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
+
+        // 4. Vaste markers voor de haltes
+        haltes.forEach((halte, idx) => {
+            if(idx < haltes.length - 1) {
+                L.circleMarker(halte.coord, {
+                    radius: 6, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.name}`);
+            }
+        });
+
+        // 5. Dienstregeling-tijdscontrole
+        const nu = new Date();
+        const day = nu.getDay(); 
+        const hours = nu.getHours();
+        const minutes = nu.getMinutes();
+        const tijdInMinuten = (hours * 60) + minutes;
+
+        let rijdtNu = false;
+        if (day === 1) { // Maandag: 12:40 - 16:18
+            rijdtNu = (tijdInMinuten >= 760 && tijdInMinuten <= 978);
+        } else if (day >= 2 && day <= 6) { // Dinsdag t/m Zaterdag: 10:42 - 16:18
+            rijdtNu = (tijdInMinuten >= 642 && tijdInMinuten <= 978);
+        }
+
+        const led = document.getElementById('status-led');
+        
+        // 100% HERSTELD: Start de marker exact op het EERSTE coördinaat (routePoints[0]) in plaats van de hele array
+        const busMarker = L.circleMarker(routePoints[0], {
+            radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
+        }).bindPopup("<b>Buurtbus 510</b>");
+
+        let currentLeg = 0;
+        let progress = 0;
+        const stepsPerLeg = 150; 
+
+        if (rijdtNu) {
+            busMarker.addTo(map);
+            led.style.backgroundColor = '#00a83e';
+            updateBusTracking();
+        } else {
+            led.style.backgroundColor = '#6c757d';
+            document.getElementById('next-stop').innerText = "Bus buiten dienst";
+            document.getElementById('tracker-msg').innerText = "Buiten de actuele dienstregeling";
+        }
+
+        // 6. Realtime tracking-motor
+        function updateBusTracking() {
+            let start = routePoints[currentLeg];
+            let end = routePoints[(currentLeg + 1) % routePoints.length];
+
+            let lat = start[0] + (end[0] - start[0]) * (progress / stepsPerLeg);
+            let lng = start[1] + (end[1] - start[1]) * (progress / stepsPerLeg);
+            
+            busMarker.setLatLng([lat, lng]);
+
+            let nextHalte = haltes[(currentLeg + 1) % haltes.length];
+            document.getElementById('next-stop').innerText = `Volgende halte: ${nextHalte.name}`;
+
+            progress++;
+            if (progress > stepsPerLeg) {
+                progress = 0;
+                currentLeg = (currentLeg + 1) % routePoints.length;
+            }
+
+            setTimeout(updateBusTracking, 40); 
+        }
+    </script>
+</body>
+</html>
