@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Buurtbus 510 Tracker - Veendam</title>
+    <!-- Leaflet CSS voor de kaart styling (gecorrigeerd via unpkg) -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
+        }
+        header {
+            background-color: #ffc107; color: #333; padding: 15px; text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        #status { font-size: 0.9rem; margin-top: 5px; font-weight: bold; }
+        #map { flex-grow: 1; width: 100%; }
+        .online { color: #1e7e34; }
+        .offline { color: #bd2130; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🚌 Live Tracker: Buurtbus 510 Veendam</h1>
+        <div id="status">Status: Gegevens ophalen...</div>
+    </header>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript voor de kaart functionaliteit (gecorrigeerd via unpkg) -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        // Initialiseer de kaart standaard gecentreerd op Veendam
+        const map = L.map('map').setView([53.1017, 6.8742], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '© OpenStreetMap'
+        }).addTo(map);
+        const busIcon = L.divIcon({ html: '<span style="font-size: 28px; filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.4));">🚌</span>', iconSize:, className: 'bus-emoji-icon' });
+        let busMarker = null;
+     
+
+        async function trackBus() {
+            const statusEl = document.getElementById('status');
+            
+            try {
+                // We vragen specifiek de data op van Connexxion (cxx) lijn v510 voor richting 1 en 2
+                const response = await fetch('https://ovapi.nl');
+                
+                if (!response.ok) {
+                    statusEl.innerHTML = "🔴 OV-data service is momenteel niet bereikbaar. Probeer het zo opnieuw.";
+                    statusEl.className = 'offline';
+                    return;
+                }
+                
+                const data = await response.json();
+                let busFound = false;
+
+                // Loop door de lijnen in de binnengekomen data (richting 1 en richting 2)
+                for (const lineKey in data) {
+                    const lineData = data[lineKey];
+                    
+                    // Controleer of er actuele ritten (Actuals) actief zijn voor deze richting
+                    if (lineData.Actuals) {
+                        for (const actualKey in lineData.Actuals) {
+                            const actual = lineData.Actuals[actualKey];
+                            
+                            // Controleer of de Connexxion bus op dit moment live GPS coördinaten doorgeeft
+                            if (actual.Latitude && actual.Longitude) {
+                                const lat = parseFloat(actual.Latitude);
+                                const lng = parseFloat(actual.Longitude);
+                                
+                                // Bereken eventuele vertraging (staat in seconden in de API)
+                                const delay = actual.Delay ? Math.round(actual.Delay / 60) : 0;
+                                let delayText = delay === 0 ? "op tijd" : (delay > 0 ? `+${delay} min` : `${delay} min vroeg`);
+                                const bestemming = actual.DestinationName || 'Veendam';
+
+                                statusEl.innerHTML = `🟢 Live verbinding! Richting: ${bestemming} (${delayText})`;
+                                statusEl.className = 'online';
+
+                                // Update de positie van de bus op de kaart
+                                if (busMarker) {
+                                    busMarker.setLatLng([lat, lng]);
+                                } else {
+                                    busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
+                                    map.setView([lat, lng], 14); // Zoom in op de actieve bus
+                                }
+
+                                // Popup info toevoegen bij klikken op het icoon
+                                busMarker.bindPopup(`<b>Buurtbus 510 (Connexxion)</b><br>Bestemming: ${bestemming}<br>Status: ${delayText}<br>Laatste update: ${new Date().toLocaleTimeString()}`);
+                                busFound = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (busFound) break;
+                }
+
+                // Als er in de hele datafeed geen actieve bus met GPS is gevonden
+                if (!busFound) {
+                    statusEl.innerHTML = "⏰ De bus is momenteel offline (buiten dienst, pauze of avond/nacht).";
+                    statusEl.className = 'offline';
+                    if (busMarker) {
+                        map.removeLayer(busMarker);
+                        busMarker = null;
+                    }
+                }
+
+            } catch (error) {
+                console.error("Fout bij ophalen OV-data:", error);
+                statusEl.innerHTML = "⚠️ Fout bij verbinding maken met de OV-server.";
+                statusEl.className = 'offline';
+            }
+        }
+
+        // Start de tracker direct en ververs automatisch elke 15 seconden
+        trackBus();
+        setInterval(trackBus, 15000);
+    </script>
+</body>
+</html>
