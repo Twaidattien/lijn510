@@ -1,0 +1,24 @@
+/* Leaflet core CSS - Versie Z16 Basis */
+.leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; }
+.leaflet-container { overflow: hidden; -webkit-tap-highlight-color: transparent; }
+.leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-user-drag: none; }
+.leaflet-tile { filter: inherit; visibility: hidden; }
+.leaflet-tile-loaded { visibility: inherit; }
+.leaflet-zoom-box { width: 0; height: 0; -moz-box-sizing: border-box; box-sizing: border-box; z-index: 800; }
+.leaflet-overlay-pane svg { -moz-user-select: none; user-select: none; }
+.leaflet-pane { z-index: 400; }
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+.leaflet-vml-shape { text-pixel-position: true; }
+.leaflet-control { position: relative; z-index: 800; pointer-events: auto; float: left; clear: both; }
+.leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
+.leaflet-top    { top: 0; }
+.leaflet-right  { right: 0; }
+.leaflet-bottom { bottom: 0; }
+.leaflet-left   { left: 0; }
