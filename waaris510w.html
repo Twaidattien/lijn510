@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie W)</title>
+    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie X)</title>
     <link rel="stylesheet" href="https://unpkg.com" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
@@ -40,7 +40,7 @@
 <body>
 
     <header>
-        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie W)</h1>
+        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie X)</h1>
         <p>PROJECT-BUS510-VEENDAM-2026 | Route Veendam Station - Wildervank</p>
     </header>
 
@@ -58,6 +58,7 @@
 
     <script src="https://unpkg.com"></script>
     <script>
+        // Officiële haltes en routepunten
         const haltes = [
             { name: "Veendam Station (Perron B)", coord: [53.1012, 6.7534] },
             { name: "Veendam Centrum", coord: [53.1041, 6.7482] },
@@ -70,14 +71,19 @@
         ];
 
         const routePoints = haltes.map(h => h.coord);
+        
+        // 1. Initialiseer de kaart direct gecentreerd op de regio Veendam
         const map = L.map('map').setView([53.0970, 6.7530], 13);
 
+        // 2. Laad de kaarttegels
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap-auteurs'
         }).addTo(map);
 
+        // 3. Teken de routelijn van de bus
         L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
 
+        // 4. Plaats vaste markers bij de haltes
         haltes.forEach((halte, idx) => {
             if(idx < haltes.length - 1) {
                 L.circleMarker(halte.coord, {
@@ -86,21 +92,23 @@
             }
         });
 
-        // Controleer de dienstregeling één keer bij het opstarten
+        // 5. Bepaal de actuele status op basis van de dienstregeling
         const nu = new Date();
-        const dag = nu.getDay(); 
-        const uren = nu.getHours();
-        const minuten = nu.getMinutes();
-        const tijdInMinuten = (uren * 60) + minuten;
+        const day = nu.getDay(); 
+        const hours = nu.getHours();
+        const minutes = nu.getMinutes();
+        const tijdInMinuten = (hours * 60) + minutes;
 
         let rijdtNu = false;
-        if (dag === 1) { // Maandag: 12:40 - 16:18
+        if (day === 1) { // Maandag: 12:40 - 16:18 (760 tot 978 minuten)
             rijdtNu = (tijdInMinuten >= 760 && tijdInMinuten <= 978);
-        } else if (dag >= 2 && dag <= 6) { // Dinsdag t/m Zaterdag: 10:42 - 16:18
+        } else if (day >= 2 && day <= 6) { // Dinsdag t/m Zaterdag: 10:42 - 16:18 (642 tot 978 minuten)
             rijdtNu = (tijdInMinuten >= 642 && tijdInMinuten <= 978);
         }
 
         const led = document.getElementById('status-led');
+        
+        // CORRECTIE: Initialiseer de marker op één enkel startpunt in plaats van de hele array
         const busMarker = L.circleMarker(routePoints[0], {
             radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
         }).bindPopup("<b>Buurtbus 510</b>");
@@ -109,6 +117,7 @@
         let progress = 0;
         const stepsPerLeg = 150; 
 
+        // 6. Start de tracking-motor als de bus binnen de dienstregeling valt
         if (rijdtNu) {
             busMarker.addTo(map);
             led.style.backgroundColor = '#00a83e';
