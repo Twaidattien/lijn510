@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie Z9)</title>
+    <!-- Officiële Leaflet CSS via Cloudflare CDN -->
+    <link rel="stylesheet" href="https://cloudflare.com" integrity="sha512-Zcn6diiQFYG7TrLwSIsmdnS7S96v6zYp5U1SpxN0M8CgDkF85vj2wM8D1S7S4l4I+6CgD9D7C8M7M7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        
+        /* Forceer de pagina om exact het scherm te vullen */
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 1000;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        /* Gecorrigeerde kaartcontainer voor naadloze tile-berekening op GitHub */
+        .app-container { flex: 1; position: relative; width: 100%; height: 100%; }
+        #map { width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; background-color: #e5e5e5; }
+
+        /* Overzichtelijke Status Overlay */
+        .status-panel {
+            position: absolute; top: 20px; left: 20px; background: white; padding: 15px 20px; 
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; align-items: center; gap: 15px; width: 320px;
+        }
+        .pulse-indicator { 
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; 
+            animation: gpsPulse 1.8s infinite ease-in-out;
+        }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+
+        @keyframes gpsPulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0, 168, 62, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0); }
+        }
+
+        /* Mobiele optimalisatie van het paneel */
+        @media (max-width: 767px) {
+            .status-panel { bottom: 20px; top: auto; left: 50%; transform: translateX(-50%); width: 90%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie Z9)</h1>
+        <p>PROJECT-BUS510-VEENDAM-2026 | Route Veendam Station - Wildervank</p>
+    </header>
+
+    <div class="app-container">
+        <!-- De interactieve kaartlaag -->
+        <div id="map"></div>
+
+        <!-- Het live statuspaneel -->
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led" style="background-color: #6c757d;"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Volgende halte: Berekenen...</h3>
+                <p id="tracker-msg">Live GPS-simulatie actief</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Officiële Leaflet JS via Cloudflare CDN -->
+    <script src="https://cloudflare.com" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <script>
+        window.onload = function() {
+            // Officiële bushaltes van de lusroute
+            const haltes = [
+                { name: "Veendam Station (Perron B)", coord: [53.1012, 6.7534] },
+                { name: "Veendam Centrum", coord: [53.1041, 6.7482] },
+                { name: "Langebosschedijk", coord: [53.1070, 6.7495] },
+                { name: "Zwembad (Sportcomplex)", coord: [53.1115, 6.7540] },
+                { name: "Winkelcentrum Skagerrak", coord: [53.1090, 6.7620] },
+                { name: "Finse Golf", coord: [53.1055, 6.7645] },
+                { name: "Wildervank, Westerhave", coord: [53.0872, 6.7451] },
+                { name: "Veendam Station (Eindpunt)", coord: [53.1012, 6.7534] }
+            ];
+
+            const routePoints = haltes.map(h => h.coord);
+            
+            // 1. Initialiseer de kaart gecentreerd op de regio Veendam-Wildervank
+            const map = L.map('map').setView([53.0970, 6.7530], 13);
+
+            // 2. Koppel de OpenStreetMap-laag
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap-auteurs',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Gecorrigeerde fix voor GitHub: dwing de kaartmotor direct alle tiles naadloos te renderen
+            setTimeout(function(){ map.invalidateSize(); }, 200);
+
+            // 3. Teken de route als een blauwe OV-lijn
+            L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
+
+            // 4. Plaats vaste markers voor de haltes
+            haltes.forEach((halte, idx) => {
+                if(idx < haltes.length - 1) {
+                    L.circleMarker(halte.coord, {
+                        radius: 6, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
+                    }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.name}`);
+                }
+            });
+
+            // 5. Dienstregeling-tijdscontrole (Donderdagmiddag = Actief)
+            const nu = new Date();
+            const day = nu.getDay(); 
+            const hours = nu.getHours();
+            const minutes = nu.getMinutes();
+            const tijdInMinuten = (hours * 60) + minutes;
+
+            let rijdtNu = false;
+            if (day === 1) { 
+                rijdtNu = (tijdInMinuten >= 760 && tijdInMinuten <= 978);
+            } else if (day >= 2 && day <= 6) { 
+                rijdtNu = (tijdInMinuten >= 642 && tijdInMinuten <= 978);
+            }
+
+            const led = document.getElementById('status-led');
+            
+            // Rode live bus tracker bol marker
+            const busMarker = L.circleMarker([53.1012, 6.7534], {
+                radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
+            }).bindPopup("<b>Buurtbus 510</b>");
+
+            let currentLeg = 0;
+            let progress = 0;
+            const stepsPerLeg = 150; 
+
+            if (rijdtNu) {
+                busMarker.addTo(map);
+                led.style.backgroundColor = '#00a83e';
+                updateBusTracking();
+            } else {
+                led.style.backgroundColor = '#6c757d';
+                document.getElementById('next-stop').innerText = "Bus buiten dienst";
+                document.getElementById('tracker-msg').innerText = "Buiten de actuele dienstregeling";
+            }
+
+            // 6. Realtime tracking-motor
+            function updateBusTracking() {
+                let start = routePoints[currentLeg];
+                let end = routePoints[(currentLeg + 1) % routePoints.length];
+
+                let lat = start[0] + (end[0] - start[0]) * (progress / stepsPerLeg);
+                let lng = start[1] + (end[1] - start[1]) * (progress / stepsPerLeg);
+                
+                busMarker.setLatLng([lat, lng]);
+
+                let nextHalte = haltes[(currentLeg + 1) % haltes.length];
+                document.getElementById('next-stop').innerText = `Volgende halte: ${nextHalte.name}`;
+
+                progress++;
+                if (progress > stepsPerLeg) {
+                    progress = 0;
+                    currentLeg = (currentLeg + 1) % routePoints.length;
+                }
+
+                setTimeout(updateBusTracking, 40); 
+            }
+        };
+    </script>
+</body>
+</html>
