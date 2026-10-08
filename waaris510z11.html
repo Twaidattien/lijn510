@@ -72,7 +72,7 @@
     
     <script>
         window.onload = function() {
-            // Beveiliging: geef foutmelding als de database niet gevonden wordt
+            // Controleer of de database correct is geladen
             if (typeof haltesLijn510 === 'undefined') {
                 document.getElementById('next-stop').innerText = "Data Fout!";
                 document.getElementById('tracker-msg').innerText = "Bestand 'haltes510.js' mist in de map.";
@@ -97,7 +97,7 @@
             // 3. Teken de route als een blauwe OV-lijn
             L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
 
-            // 4. Vaste markers plaatsen bij alle ingeladen haltes uit de database
+            // 4. Vaste markers plaatsen bij alle ingeladen haltes
             haltesLijn510.forEach((halte) => {
                 L.circleMarker([halte.lat, halte.lon], {
                     radius: 5, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
@@ -120,7 +120,7 @@
 
             const led = document.getElementById('status-led');
             
-            // Initialisatie live bus marker op het eerste coördinaat van de route
+            // CORRECTIE: De index [0] is toegevoegd zodat Leaflet de startpositie correct kan berekenen
             const busMarker = L.circleMarker([haltesLijn510[0].lat, haltesLijn510[0].lon], {
                 radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
             }).bindPopup("<b>Buurtbus 510</b>");
@@ -139,7 +139,7 @@
                 document.getElementById('tracker-msg').innerText = "Buiten de actuele dienstregeling";
             }
 
-            // 6. Realtime tracking-motor (Gecorrigeerde array-indexering)
+            // 6. Realtime tracking-motor
             function updateBusTracking() {
                 let start = routePoints[currentLeg];
                 let end = routePoints[(currentLeg + 1) % routePoints.length];
