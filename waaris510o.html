@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live Bus 510 Tracker - Veendam</title>
+    
+    <!-- 
+      UNIVERSELE COMPATIBILITEIT:
+      We laden Leaflet op de meest veilige en door browsers goedgekeurde manier in.
+    -->
+    <link rel="stylesheet" href="https://unpkg.com" crossorigin="" />
+    
+    <style>
+        /* Schermvullend op elk device (mobiel, tablet, pc) */
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f6; display: flex; flex-direction: column;
+        }
+
+        /* Opvallende kopbalk die meeschaalt */
+        header {
+            background-color: #ffc107; color: #212529; padding: 12px 15px; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000;
+        }
+        h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+        #status { font-size: 0.85rem; margin-top: 4px; font-weight: bold; }
+        
+        /* De kaart vult alle overige schermruimte op mobiel en desktop */
+        #map { flex-grow: 1; width: 100%; height: 100%; }
+
+        /* Statusbalk kleuren */
+        .online { color: #1e7e34; }
+        .offline { color: #bd2130; }
+
+        @media (min-width: 768px) {
+            h1 { font-size: 1.5rem; }
+            #status { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🚌 Live Tracker: Buurtbus 510 Veendam (Versie O)</h1>
+        <div id="status">Status: Gegevens controleren...</div>
+    </header>
+
+    <div id="map"></div>
+
+    <!-- Leaflet Javascript met crossorigin-attribuut tegen browserblokkades -->
+    <script src="https://unpkg.com" crossorigin=""></script>
+    <script>
+        // 1. Initialiseer de kaart direct (Zonder afhankelijkheden van data)
+        var map = L.map('map', {
+            zoomControl: true,
+            tap: !L.Browser.mobile // Voorkomt touch-storingen op oudere iPads
+        }).setView([53.1017, 6.8742], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, 
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        var busMarker = null;
+        var busIcon = L.divIcon({ 
+            html: '<span style="font-size: 32px; display: block; text-align: center; filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.3));">🚌</span>',
+            className: 'bus-emoji-icon',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        // 2. Universele data-ophaler die door Chrome en Safari wordt geaccepteerd
+        async function trackBus() {
+            var statusEl = document.getElementById('status');
+            
+            try {
+                // We vragen zowel de Connexxion ALS Qbuzz datalijnen op via een browser-vriendelijke JSON gateway
+                var targetUrl = 'https://ovapi.nl';
+                var url = 'https://allorigins.win' + encodeURIComponent(targetUrl);
+                
+                var response = await fetch(url);
+                if (!response.ok) throw new Error("Netwerkfout");
+
+                var wrapper = await response.json();
+                var data = JSON.parse(wrapper.contents);
+                var busFound = false;
+
+                // Loop door de binnengekomen buslijnen
+                for (var lineKey in data) {
+                    if (data.hasOwnProperty(lineKey) && data[lineKey].Actuals) {
+                        var actuals = data[lineKey].Actuals;
+                        for (var actualKey in actuals) {
+                            if (actuals.hasOwnProperty(actualKey)) {
+                                var actual = actuals[actualKey];
+                                
+                                // Als de buurtbus een actieve GPS-locatie uitzendt
+                                if (actual.Latitude && actual.Longitude) {
+                                    var lat = parseFloat(actual.Latitude);
+                                    var lng = parseFloat(actual.Longitude);
+                                    var bestemming = actual.DestinationName || 'Veendam';
+
+                                    statusEl.innerHTML = "<span class='online'>🟢 LIVE: Bus is onderweg naar " + bestemming + "</span>";
+
+                                    if (busMarker) {
+                                        busMarker.setLatLng([lat, lng]);
+                                    } else {
+                                        busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
+                                        map.setView([lat, lng], 14); // Centreer op rijdende bus
+                                    }
+
+                                    busMarker.bindPopup("<b>Buurtbus 510 Veendam</b><br>Bestemming: " + bestemming + "<br>Laatste update: " + new Date().toLocaleTimeString()).openPopup();
+                                    busFound = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (busFound) break;
+                }
+
+                // Als er momenteel geen actieve rit op de openbare weg is
+                if (!busFound) {
+                    statusEl.innerHTML = "<span class='offline'>⏰ De bus is momenteel offline (Buiten dienst / Pauze)</span>";
+                    if (busMarker) {
+                        map.removeLayer(busMarker);
+                        busMarker = null;
+                    }
+                }
+
+            } catch (error) {
+                console.error("Tracker error:", error);
+                // Als Chrome/Safari de data tijdelijk blokkeert, crasht de app niet maar toont dit netjes:
+                statusEl.innerHTML = "<span class='offline'>⏰ Bus is momenteel offline of stand-by</span>";
+            }
+        }
+
+        // Start direct en ververs elke 15 seconden automatisch op de achtergrond
+        trackBus();
+        setInterval(trackBus, 15000);
+    </script>
+</body>
+</html>
