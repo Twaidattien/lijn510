@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie AA02)</title>
-    <!-- Gecorrigeerd: We linken puur naar uw eigen lokale css-bestanden op GitHub -->
-    <link rel="stylesheet" href="leaflet.css" />
+    <link rel="stylesheet" href="lijn510/leaflet.css" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
@@ -63,13 +62,13 @@
             </div>
         </div>
         <div id="debug-console">
-            <div class="debug-entry debug-success">[SYSTEM] Foutopsporingspaneel Versie AA02 actief. Lokale scripts modus.</div>
+            <div class="debug-entry debug-success">[SYSTEM] Foutopsporingspaneel Versie AA02 geactiveerd.</div>
         </div>
     </div>
 
-    <!-- Gecorrigeerd: We laden de bestanden direct vanaf uw eigen GitHub map -->
-    <script src="leaflet.js"></script>
-    <script src="haltes510.js"></script>
+    <!-- Koppelingen naar uw eigen submapbestanden op GitHub Pages -->
+    <script src="lijn510/leaflet.js"></script>
+    <script src="lijn510/haltes510.js"></script>
     
     <script>
         function logDebug(msg, isError = false) {
@@ -103,44 +102,28 @@
                 logDebug(`Database geactiveerd. ${haltesLijn510.length} haltes paraat.`);
 
                 const routePoints = haltesLijn510.map(h => [h.lat, h.lon]);
-                
-                // 1. Initialiseer de kaart
-                const map = L.map('map').setView([53.0970, 6.8700], 13);
+                const map = L.map('map', { center: [53.103750, 6.885389], zoom: 13 });
                 logDebug("Kaart canvas succesvol aangemaakt.");
 
-                // 2. Koppel de OpenStreetMap kaarttegels
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap-auteurs',
-                    maxZoom: 18
-                }).addTo(map);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
                 logDebug("Kaarttegels gekoppeld.");
 
-                // Dwing GitHub Pages om de kaart direct goed uit te vullen
-                setTimeout(function(){ map.invalidateSize(); }, 200);
-
-                // 3. Teken de route als blauwe stippellijn
                 L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
                 logDebug("Routelijn getekend.");
 
-                // 4. Plaats markers voor de 46 haltes
                 haltesLijn510.forEach((halte) => {
-                    L.circleMarker([halte.lat, halte.lon], {
-                        radius: 5, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
-                    }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.naam}`);
+                    L.circleMarker([halte.lat, halte.lon]).addTo(map);
                 });
                 logDebug("Alle 46 vaste haltemarkers geplaatst.");
 
-                // 5. Initialiseer de LIVE bus marker op het startstation
                 const busMarker = L.circleMarker([53.103750, 6.885389], {
                     radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
-                }).addTo(map).bindPopup("<b>Live Qbuzz 510</b>");
+                }).addTo(map);
 
                 const led = document.getElementById('status-led');
 
-                // 6. Echte Live GPS-Data Fetcher via OpenOV (Qbuzz 510)
                 function fetchLiveGPS() {
                     logDebug("Realtime GPS positie opvragen bij OpenOV KV6 stream...");
-                    
                     const apiURL = "https://openov.nl";
 
                     fetch(apiURL)
@@ -156,13 +139,11 @@
                                 const speed = busData.position.speed ? Math.round(busData.position.speed * 3.6) : 0;
 
                                 logDebug(`LIVE GPS GEUPDATE: [${liveLat}, ${liveLon}] | Snelheid: ${speed} km/u`);
-
-                                // Verplaats het rode bolletje naar de echte actuele GPS locatie
                                 busMarker.setLatLng([liveLat, liveLon]);
                                 
                                 led.style.backgroundColor = '#00a83e';
                                 document.getElementById('next-stop').innerText = "Bus is Live onderweg";
-                                document.getElementById('tracker-msg').innerText = `Snelheid: ${speed} km/u | GPS verbinding stabiel`;
+                                document.getElementById('tracker-msg').innerText = `Snelheid: ${speed} km/u | GPS stabiel`;
                             } else {
                                 led.style.backgroundColor = '#6c757d';
                                 document.getElementById('next-stop').innerText = "Bus momenteel afwezig";
@@ -172,15 +153,11 @@
                         })
                         .catch(err => {
                             logDebug(`API VERBINDINGSFOUT: ${err.message}`, true);
-                            document.getElementById('next-stop').innerText = "API Verbindingsfout";
-                            document.getElementById('tracker-msg').innerText = "Kan realtime KV6 datastream niet bereiken.";
                         });
                 }
 
-                // Start direct de live GPS synchronisatie
                 fetchLiveGPS();
-                setInterval(fetchLiveGPS, 10000); // Update elke 10 seconden live de buslocatie
-
+                setInterval(fetchLiveGPS, 10000);
             } catch (globalErr) {
                 logDebug(`INITIALISATIEFOUT: ${globalErr.message}`, true);
             }
