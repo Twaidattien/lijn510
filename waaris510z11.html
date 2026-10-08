@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT-BUS510-VEENDAM-2026 - Live Tracker (Versie Z11)</title>
+    <!-- Officiële Leaflet CSS via Cloudflare CDN -->
+    <link rel="stylesheet" href="https://cloudflare.com" integrity="sha512-Zcn6diiQFYG7TrLwSIsmdnS7S96v6zYp5U1SpxN0M8CgDkF85vj2wM8D1S7S4l4I+6CgD9D7C8M7M7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 1000;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        .app-container { flex: 1; position: relative; width: 100%; height: 100%; }
+        #map { width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; background-color: #e5e5e5; }
+
+        .status-panel {
+            position: absolute; top: 20px; left: 20px; background: white; padding: 15px 20px; 
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; align-items: center; gap: 15px; width: 340px;
+        }
+        .pulse-indicator { 
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; 
+            animation: gpsPulse 1.8s infinite ease-in-out;
+        }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+
+        @keyframes gpsPulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0, 168, 62, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0); }
+        }
+
+        @media (max-width: 767px) {
+            .status-panel { bottom: 20px; top: auto; left: 50%; transform: translateX(-50%); width: 90%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER (Versie Z11)</h1>
+        <p>PROJECT-BUS510-VEENDAM-2026 | Gecentraliseerde Databron Modus</p>
+    </header>
+
+    <div class="app-container">
+        <div id="map"></div>
+
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led" style="background-color: #6c757d;"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Volgende halte: Berekenen...</h3>
+                <p id="tracker-msg">Live GPS-simulatie actief</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Officiële Leaflet JS via Cloudflare CDN -->
+    <script src="https://cloudflare.com" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <!-- Externe haltelijst databron koppelen -->
+    <script src="haltes510.js"></script>
+    
+    <script>
+        window.onload = function() {
+            // Beveiliging: geef foutmelding als de database niet gevonden wordt
+            if (typeof haltesLijn510 === 'undefined') {
+                document.getElementById('next-stop').innerText = "Data Fout!";
+                document.getElementById('tracker-msg').innerText = "Bestand 'haltes510.js' mist in de map.";
+                return;
+            }
+
+            // Zet data om naar Leaflet-formaat
+            const routePoints = haltesLijn510.map(h => [h.lat, h.lon]);
+            
+            // 1. Initialiseer de kaart gecentreerd op de regio Veendam-Wildervank
+            const map = L.map('map').setView([53.0970, 6.8700], 13);
+
+            // 2. Koppel de OpenStreetMap kaarttegellaag
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap-auteurs',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Dwing naadloze tile-rendering af
+            setTimeout(function(){ map.invalidateSize(); }, 200);
+
+            // 3. Teken de route als een blauwe OV-lijn
+            L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
+
+            // 4. Vaste markers plaatsen bij alle ingeladen haltes uit de database
+            haltesLijn510.forEach((halte) => {
+                L.circleMarker([halte.lat, halte.lon], {
+                    radius: 5, color: '#005cbf', fillColor: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.naam}<br>Dienstregeling-minuut: .${halte.minuut}`);
+            });
+
+            // 5. Dienstregeling-tijdscontrole
+            const nu = new Date();
+            const day = nu.getDay(); 
+            const hours = nu.getHours();
+            const minutes = nu.getMinutes();
+            const tijdInMinuten = (hours * 60) + minutes;
+
+            let rijdtNu = false;
+            if (day === 1) { // Maandag: 12:40 - 16:18
+                rijdtNu = (tijdInMinuten >= 760 && tijdInMinuten <= 978);
+            } else if (day >= 2 && day <= 6) { // Dinsdag t/m Zaterdag: 10:42 - 16:18
+                rijdtNu = (tijdInMinuten >= 642 && tijdInMinuten <= 978);
+            }
+
+            const led = document.getElementById('status-led');
+            
+            // Initialisatie live bus marker op het eerste coördinaat van de route
+            const busMarker = L.circleMarker([haltesLijn510[0].lat, haltesLijn510[0].lon], {
+                radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3
+            }).bindPopup("<b>Buurtbus 510</b>");
+
+            let currentLeg = 0;
+            let progress = 0;
+            const stepsPerLeg = 100; 
+
+            if (rijdtNu) {
+                busMarker.addTo(map);
+                led.style.backgroundColor = '#00a83e';
+                updateBusTracking();
+            } else {
+                led.style.backgroundColor = '#6c757d';
+                document.getElementById('next-stop').innerText = "Bus buiten dienst";
+                document.getElementById('tracker-msg').innerText = "Buiten de actuele dienstregeling";
+            }
+
+            // 6. Realtime tracking-motor (Gecorrigeerde array-indexering)
+            function updateBusTracking() {
+                let start = routePoints[currentLeg];
+                let end = routePoints[(currentLeg + 1) % routePoints.length];
+
+                let lat = start[0] + (end[0] - start[0]) * (progress / stepsPerLeg);
+                let lng = start[1] + (end[1] - start[1]) * (progress / stepsPerLeg);
+                
+                busMarker.setLatLng([lat, lng]);
+
+                let nextHalte = haltesLijn510[(currentLeg + 1) % haltesLijn510.length];
+                document.getElementById('next-stop').innerText = `Volgende halte: ${nextHalte.naam}`;
+
+                progress++;
+                if (progress > stepsPerLeg) {
+                    progress = 0;
+                    currentLeg = (currentLeg + 1) % routePoints.length;
+                }
+
+                setTimeout(updateBusTracking, 50); 
+            }
+        };
+    </script>
+</body>
+</html>
