@@ -3,32 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROJECT-BUS510-VEENDAM-2026 - Webapp Prototype</title>
+    <title>BUS510 - VEENDAM Tracker</title>
+    <!-- Leaflet CSS voor de interactieve kaart -->
+    <link rel="stylesheet" href="https://unpkg.com" />
     <style>
-        :root {
-            --primary-color: #0056b3;
-            --secondary-color: #f4f7f6;
-            --text-color: #333;
-            --accent-color: #28a745;
-            --border-color: #ccc;
-        }
-        
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            background-color: var(--secondary-color);
-            color: var(--text-color);
-            line-height: 1.6;
-            padding-bottom: 60px;
+            background-color: #f4f6f9;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
 
         header {
-            background-color: var(--primary-color);
+            background-color: #005cbf;
             color: white;
             padding: 15px;
             text-align: center;
@@ -36,7 +30,7 @@
         }
 
         header h1 {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
         }
 
         header p {
@@ -44,310 +38,187 @@
             opacity: 0.9;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 0 15px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            font-size: 0.95rem;
-        }
-
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-
-        .btn {
-            display: inline-block;
-            background-color: var(--primary-color);
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            width: 100%;
-            text-align: center;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-
-        .btn:hover {
-            background-color: #004085;
-        }
-
-        .btn-success {
-            background-color: var(--accent-color);
-        }
-
-        .btn-success:hover {
-            background-color: #1e7e34;
-        }
-
-        .btn-clear {
-            background-color: #dc3545;
-            margin-top: 15px;
-        }
-
-        .btn-clear:hover {
-            background-color: #bd2130;
-        }
-
-        .data-list {
-            margin-top: 20px;
-        }
-
-        .data-item {
-            background: #f8f9fa;
-            border-left: 4px solid var(--primary-color);
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9rem;
-        }
-
-        .data-item strong {
-            color: var(--primary-color);
-        }
-
-        /* Bottom Navigation Bar for Mobile & Desktop */
-        nav.bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background-color: white;
-            display: flex;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-            z-index: 1000;
-        }
-
-        .nav-item {
+        /* Container voor de kaart en de info */
+        .app-container {
             flex: 1;
             display: flex;
             flex-direction: column;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Live status paneel overlay */
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 450px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #28a745;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-info {
+            flex: 1;
+        }
+
+        .status-info h3 {
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .status-info p {
+            font-size: 0.85rem;
             color: #666;
-            text-decoration: none;
-            font-size: 0.8rem;
-            cursor: pointer;
-            border: none;
-            background: none;
         }
 
-        .nav-item.active {
-            color: var(--primary-color);
-            font-weight: bold;
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(40, 167, 69, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
         }
 
-        .nav-icon {
-            font-size: 1.3rem;
-            margin-bottom: 2px;
-        }
-
-        .empty-state {
-            text-align: center;
-            color: #777;
-            padding: 20px 0;
-            font-style: italic;
+        /* Schaalbaarheid voor desktop */
+        @media (min-width: 768px) {
+            .status-panel {
+                bottom: unset;
+                top: 20px;
+                left: 20px;
+                transform: none;
+                width: 320px;
+                border-radius: 12px;
+            }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>BUS510 - VEENDAM</h1>
-        <p>Projectregistratie & Inspecties 2026</p>
+        <h1>BUS510 - VEENDAM LIVE</h1>
+        <p>Realtime Locatietracking Stadsbus Veendam 2026</p>
     </header>
 
-    <div class="container">
-        <!-- TAB 1: REGISTRATIE -->
-        <div id="tab-registratie" class="tab-content active">
-            <div class="card">
-                <h2>Nieuwe Inspectie / Meting</h2>
-                <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">Vul de onderstaande gegevens in. Data wordt lokaal opgeslagen.</p>
-                
-                <form id="inspection-form">
-                    <div class="form-group">
-                        <label for="inspector">Inspecteur / Uitvoerder</label>
-                        <input type="text" id="inspector" required placeholder="Naam invoeren">
-                    </div>
+    <div class="app-container">
+        <!-- De kaart -->
+        <div id="map"></div>
 
-                    <div class="form-group">
-                        <label for="location">Locatie (binnen Veendam)</label>
-                        <select id="location">
-                            <option value="Veendam-Centrum">Veendam Centrum</option>
-                            <option value="Wildervank">Wildervank</option>
-                            <option value="Sorghvliet">Sorghvliet</option>
-                            <option value="Ommelanderwijk">Ommelanderwijk</option>
-                            <option value="Borgerswold">Borgerswold / Industrie</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="measurement">Gemeten Waarde (Meting-X)</label>
-                        <input type="number" id="measurement" step="0.01" required placeholder="0.00">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="notes">Opmerkingen & Status</label>
-                        <textarea id="notes" rows="3" placeholder="Bijzonderheden of status van de buslijn/infrastructuur..."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-success">Opslaan in Browser</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- TAB 2: OVERZICHT -->
-        <div id="tab-overzicht" class="tab-content">
-            <div class="card">
-                <h2>Opgeslagen Gegevens</h2>
-                <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">Overzicht van lokale browserregistraties binnen dit apparaat.</p>
-                
-                <div id="records-container" class="data-list">
-                    <!-- Data built dynamically via JS -->
-                </div>
-
-                <button id="clear-data-btn" class="btn btn-clear">Wis Alle Lokale Data</button>
-            </div>
-        </div>
-
-        <!-- TAB 3: INFO -->
-        <div id="tab-info" class="tab-content">
-            <div class="card">
-                <h2>Project Info</h2>
-                <p><strong>Code:</strong> PROJECT-BUS510-VEENDAM-2026</p>
-                <p><strong>Status:</strong> Live Prototype (Offline-first)</p>
-                <p style="margin-top: 15px;">Deze webapp is ontworpen om volledig standalone te functioneren zonder afhankelijkheden van externe websites of databases. Alle functionaliteiten draaien rechtstreeks binnen de browser-sandbox van de gebruiker.</p>
+        <!-- Status Paneel -->
+        <div class="status-panel">
+            <div class="status-dot"></div>
+            <div class="status-info">
+                <h3 id="current-stop">Volgende halte: Laden...</h3>
+                <p id="bus-status">Bus rijdt momenteel op de route.</p>
             </div>
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="switchTab('tab-registratie', this)">
-            <span class="nav-icon">📝</span>
-            <span>Invoer</span>
-        </button>
-        <button class="nav-item" onclick="switchTab('tab-overzicht', this)">
-            <span class="nav-icon">📊</span>
-            <span>Overzicht</span>
-        </button>
-        <button class="nav-item" onclick="switchTab('tab-info', this)">
-            <span class="nav-icon">ℹ️</span>
-            <span>Info</span>
-        </button>
-    </nav>
-
+    <!-- Leaflet JS voor kaartfunctionaliteit -->
+    <script src="https://unpkg.com"></script>
     <script>
-        // Storage key configuration
-        const STORAGE_KEY = 'BUS510_VEENDAM_2026_DATA';
+        // Coördinaten van de route van Bus 510 in Veendam (simulatie-route)
+        const routeCoords = [
+            [53.1012, 6.7534], // Station Veendam
+            [53.1025, 6.7505], // Julianapark
+            [53.1041, 6.7482], // Centrum / Kerkplein
+            [53.1070, 6.7495], // Boven Oosterdiep
+            [53.1115, 6.7540], // Sorghvliet Noord
+            [53.1090, 6.7620], // Skagerrak
+            [53.1035, 6.7650], // Langeleegte
+            [53.1012, 6.7534]  // Terug naar Station
+        ];
 
-        // Tab Switching Logic
-        function switchTab(tabId, element) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            // Show target tab
-            document.getElementById(tabId).classList.add('active');
-            
-            // Handle nav items styling
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            element.classList.add('active');
+        const haltes = [
+            { name: "Veendam Station", coord: [53.1012, 6.7534] },
+            { name: "Julianapark", coord: [53.1025, 6.7505] },
+            { name: "Veendam Centrum", coord: [53.1041, 6.7482] },
+            { name: "Boven Oosterdiep", coord: [53.1070, 6.7495] },
+            { name: "Sorghvliet", coord: [53.1115, 6.7540] },
+            { name: "Skagerrak", coord: [53.1090, 6.7620] },
+            { name: "Langeleegte", coord: [53.1035, 6.7650] }
+        ];
 
-            if(tabId === 'tab-overzicht') {
-                renderRecords();
-            }
-        }
+        // 1. Initialiseer de kaart gecentreerd op Veendam
+        const map = L.map('map').setView([53.1045, 6.7545], 14);
 
-        // Form Submit Logic
-        document.getElementById('inspection-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const record = {
-                id: Date.now(),
-                timestamp: new Date().toLocaleString('nl-NL'),
-                inspector: document.getElementById('inspector').value,
-                location: document.getElementById('location').value,
-                measurement: document.getElementById('measurement').value,
-                notes: document.getElementById('notes').value
-            };
+        // 2. Voeg een mooie, privacy-vriendelijke kaartlaag toe (werkt overal)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-            // Get existing, push, and save
-            const existingData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-            existingData.push(record);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(existingData));
+        // 3. Teken de buslijn op de kaart
+        const polyline = L.polyline(routeCoords, { color: '#005cbf', weight: 5, opacity: 0.7 }).addTo(map);
 
-            // Reset form and give confirmation
-            alert('Gegevens succesvol lokaal opgeslagen!');
-            document.getElementById('inspection-form').reset();
+        // 4. Plaats markers bij de officiële haltes
+        haltes.forEach(halte => {
+            L.circleMarker(halte.coord, {
+                radius: 6,
+                color: '#fff',
+                fillColor: '#005cbf',
+                fillOpacity: 1,
+                weight: 2
+            }).addTo(map).bindPopup(`<b>Halte:</b> ${halte.name}`);
         });
 
-        // Render Data from LocalStorage
-        function renderRecords() {
-            const container = document.getElementById('records-container');
-            const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        // 5. Maak de live bus marker (een opvallende rode cirkel/icon)
+        const busMarker = L.circleMarker(routeCoords[0], {
+            radius: 10,
+            color: '#fff',
+            fillColor: '#dc3545',
+            fillOpacity: 1,
+            weight: 3
+        }).addTo(map).bindPopup("<b>Stadsbus 510</b><br>Live Positie");
+
+        // 6. Animatie-logica om de live tracker soepel te simuleren
+        let step = 0;
+        let routeIndex = 0;
+        const interpolationSteps = 100; // Hoeveel stapjes tussen twee punten voor soepel verloop
+
+        function moveBus() {
+            let startCoord = routeCoords[routeIndex];
+            let endCoord = routeCoords[(routeIndex + 1) % routeCoords.length];
+
+            // Bereken tussenliggende positie
+            let lat = startCoord[0] + (endCoord[0] - startCoord[0]) * (step / interpolationSteps);
+            let lng = startCoord[1] + (endCoord[1] - startCoord[1]) * (step / interpolationSteps);
             
-            if (data.length === 0) {
-                container.innerHTML = '<div class="empty-state">Nog geen registraties aanwezig op dit apparaat.</div>';
-                return;
+            const newPos = [lat, lng];
+            busMarker.setLatLng(newPos);
+
+            // Update statuspaneel op basis van de dichtstbijzijnde halte
+            let nextHalte = haltes[(routeIndex + 1) % haltes.length];
+            document.getElementById('current-stop').innerText = `Volgende halte: ${nextHalte.name}`;
+
+            step++;
+            if (step > interpolationSteps) {
+                step = 0;
+                routeIndex = (routeIndex + 1) % routeCoords.length;
             }
 
-            // Sort newest first
-            data.sort((a, b) => b.id - a.id);
-
-            container.innerHTML = data.map(item => `
-                <div class="data-item">
-                    <p style="font-size:0.75rem; color:#888; text-align:right; margin-bottom:5px;">${item.timestamp}</p>
-                    <p><strong>Inspecteur:</strong> ${item.inspector}</p>
-                    <p><strong>Locatie:</strong> ${item.location}</p>
-                    <p><strong>Meting:</strong> ${item.measurement}</p>
-                    <p><strong>Opmerkingen:</strong> ${item.notes || '-'}</p>
-                </div>
-            `).join('');
+            setTimeout(moveBus, 50); // Snelheid van de simulatie updates
         }
 
-        // Clear Local Storage Logic
-        document.getElementById('clear-data-btn').addEventListener('click', function() {
-            if(confirm('Weet u zeker dat u alle lokaal opgeslagen data voor dit project wilt wissen? Dit kan niet ongedaan worden gemaakt.')) {
-                localStorage.removeItem(STORAGE_KEY);
-                renderRecords();
-            }
-        });
+        // Start het live tracken
+        moveBus();
     </script>
 </body>
 </html>
