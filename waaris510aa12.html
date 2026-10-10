@@ -82,8 +82,8 @@
             L.circleMarker = function(ll, opt) { return new L.CircleMarker(ll, opt); };
             L.CircleMarker = L.Class.extend({initialize: function(ll, opt) { this._ll = ll; }, addTo: function(m) { return this; }, setLatLng: function(ll) { this._ll = ll; return this; }, bindPopup: function(c) { return this; }});
         })(window, document);
-    <script>
-    <script>
+ 
+        <script>
         function logDebug(msg, isError = false) {
             const consoleEl = document.getElementById('debug-console');
             if (consoleEl) {
@@ -120,7 +120,6 @@
                 function fetchLiveGPS() {
                     logDebug("Realtime GPS opvragen via Qbuzz GD Regiofeed...");
                     
-                    // GECORRIGEERD: We roepen nu de specifieke realtime busposities-feed van OVapi/Bison aan
                     const targetAPI = "https://ovapi.nl";
                     const apiURL = "https://allorigins.win" + encodeURIComponent(targetAPI);
 
@@ -132,12 +131,10 @@
                         .then(wrapper => {
                             const data = JSON.parse(wrapper.contents);
                             
-                            // Controleer of er geldige voertuigdata binnenkomt
                             if (data && data.Notification && data.Notification.Records) {
                                 const records = data.Notification.Records;
-                                
-                                // Zoek in alle actieve bussen specifiek naar Lijn 510 (of lijnnaam '510')
                                 let busData = null;
+                                
                                 for (const key in records) {
                                     if (records[key].LinePlanningNumber === '510' || records[key].UserTransitCode === '510') {
                                         busData = records[key];
@@ -146,7 +143,6 @@
                                 }
                                 
                                 if (busData) {
-                                    // Haal de live coördinaten en snelheid op uit de Qbuzz-feed
                                     const liveLat = busData.Latitude;
                                     const liveLon = busData.Longitude;
                                     const speed = busData.Speed ? Math.round(busData.Speed * 3.6) : 0;
