@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>waaris510aa06.html - Live Tracker</title>
+    
+    <!-- Leaflet CSS én JavaScript nu bovenin de HEAD geplaatst zodat 'L' altijd direct gedefinieerd is -->
+    <link rel="stylesheet" href="https://unpkg.com" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 1000;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        .app-container { flex: 1; position: relative; width: 100%; display: flex; flex-direction: column; }
+        #map { flex: 1; width: 100%; z-index: 1; min-height: 40vh; }
+
+        #debug-console {
+            background-color: #1e1e1e; color: #00ff00; font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem; padding: 15px; height: 160px; overflow-y: auto;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5); border-top: 3px solid #dc3545; z-index: 2000;
+        }
+        .debug-entry { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+        .debug-error { color: #ff3333; font-weight: bold; }
+        .debug-success { color: #33ff33; }
+
+        .status-panel {
+            position: absolute; top: 20px; left: 20px; background: white; padding: 15px 20px; 
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; align-items: center; gap: 15px; width: 340px;
+        }
+        .pulse-indicator { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; animation: gpsPulse 1.8s infinite ease-in-out; }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+        @keyframes gpsPulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0, 168, 62, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER</h1>
+        <p>BESTAND: waaris510aa06.html | PROJECT-BUS510-VEENDAM-2026</p>
+    </header>
+
+    <div class="app-container">
+        <div id="map"></div>
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led" style="background-color: #6c757d;"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Live GPS: Zoeken naar voertuig...</h3>
+                <p id="tracker-msg">Verbinden met openbare OV-datastream...</p>
+            </div>
+        </div>
+        <div id="debug-console">
+            <div class="debug-entry debug-success">[SYSTEM] waaris510aa06.html succesvol geladen. Wachten op script-initialisatie...</div>
+        </div>
+    </div>
+    
+    <!-- Koppeling met jouw centrale database bestand -->
+    <script src="haltes510.js"></script>
