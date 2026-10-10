@@ -37,7 +37,7 @@ const haltesLijn510 = [
     { naam: "34. WC Skagerrak (Terug)", minuut: 25, lat: 53.095871, lon: 6.860390 },
     { naam: "35. Skagerrak (Terug)", minuut: 27, lat: 53.096987, lon: 6.859315 },
     { naam: "36. Finse Golf (Terug)", minuut: 28, lat: 53.099263, lon: 6.859684 },
-    { naam: "37. Oostlaan (Terug)", minuut: 30, lat: 53.1027222, lon: 6.8597222 },
+    { naam: "37. Oostlaan (Terug)", minuut: 30, lat: 53.103326, lon: 6.859246 },
     { naam: "38. Zeilstraat (Terug)", minuut: 32, lat: 53.103801, lon: 6.862360 },
     { naam: "39. Zwembad", minuut: 33, lat: 53.105384, lon: 6.867356 },
     { naam: "40. Kazemierstraat", minuut: 33, lat: 53.105209, lon: 6.871542 },
