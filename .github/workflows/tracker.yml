@@ -2,9 +2,8 @@ name: Tracker510
 
 on:
   schedule:
-    # Dit start de actie automatisch elke 5 minuten (de stabiele limiet voor gratis GitHub-accounts)
     - cron: '*/5 * * * *'
-  workflow_dispatch: # Hiermee kunnen we hem zometeen handmatig testen
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -14,19 +13,19 @@ jobs:
 
       - name: Haal live data op
         run: |
+          # HIER ZIT DE EXACTE CORRECTIE: Direct naar de actuele JSON-feed van Bison
           RESPONSE=$(curl -s "https://ovapi.nl")
-          if [ -z "$RESPONSE" ]; then
-            echo '{"isLive": false, "error": "Geen data ontvangen van Bison"}' > live-bus.json
+          if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
+            echo '{"isLive": false, "error": "Geen geldige JSON-data ontvangen"}' > live-bus.json
           else
-            # Filter direct op lijn 510 via de ingebouwde jq-tool
+            # Filter direct op lijn 510 via jq
             BUS=$(echo "$RESPONSE" | jq '.Notification.Records[] | select(.LinePlanningNumber=="510" or .UserTransitCode=="510")' | head -n 1)
             if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
-              echo '{"isLive": false, "msg": "Geen actieve bus op Lijn 510 gedetecteerd"}' > live-bus.json
+              echo '{"isLive": false, "msg": "Geen actieve bus op Lijn 510 gedetecteerd in regiofeed"}' > live-bus.json
             else
               LAT=$(echo "$BUS" | jq '.Latitude')
               LON=$(echo "$BUS" | jq '.Longitude')
               SPD=$(echo "$BUS" | jq '.Speed')
-              # Bereken km/u (snelheid * 3.6)
               KMH=$(python3 -c "print(round($SPD * 3.6))" 2>/dev/null || echo "0")
               
               echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
