@@ -153,7 +153,6 @@
 <!-- KOPPELING MET EXTERNE HALTES BESTAND -->
 <script src="haltes510.js"></script>
 
-
 <script>
 let watchId = null;
 let huidigeHalteIndex = 0;
@@ -242,7 +241,9 @@ function analyseerLocatie(position) {
     }
 
     // STAP 2: Bepalen of we doorrijden naar de volgende halte
-    const magDoorschakelen = (afstand > 55 && isBijHalte === true && acc < 40);
+    // AANGEPAST: We zetten de marge voor Halte 1 (index 0) nu op 250 meter vanwege de ruime lus over de Parallelweg / Spoorweg.
+    const vertrekGrens = (huidigeHalteIndex === 0) ? 250 : 55;
+    const magDoorschakelen = (afstand > vertrekGrens && isBijHalte === true && acc < 40);
 
     if (magDoorschakelen) {
         isBijHalte = false; // Reset de schakelaar voor de volgende halte
