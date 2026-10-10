@@ -13,7 +13,7 @@ jobs:
 
       - name: Ophalen Qbuzz datastream
         run: |
-          RESPONSE=$(curl -s "https://ovapi.nl")
+          RESPONSE=$(curl -s "https://bison.ovapi.nl/vehiclePositions.json")
           if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
             echo '{"isLive": false, "error": "Geen JSON data"}' > live-bus.json
           else
