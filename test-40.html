@@ -62,17 +62,17 @@
         }
         button:active { transform: scale(0.98); }
         
-        /* Stijlen voor de handmatige navigatieknoppen onder de container */
+        /* Aangepast: Knoppen staan nu aan de uiterste zijkanten */
         .handmatige-navigatie {
             margin: 20px 0 10px 0;
             display: flex;
-            gap: 20px;
-            justify-content: center;
+            justify-content: space-between;
             width: 90%;
             max-width: 550px;
+            box-sizing: border-box;
         }
         .nav-pijl-btn {
-            padding: 15px 35px;
+            padding: 15px 40px;
             font-size: 1.8rem;
             background-color: #333;
             color: white;
@@ -80,6 +80,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             border: none;
             cursor: pointer;
+            width: 45%; /* Zorgt dat de knoppen mooi groot en tikbaar zijn */
         }
         .nav-pijl-btn:active { transform: scale(0.95); }
 
@@ -131,7 +132,7 @@
     <p class="info-gps" id="gps-debug">GPS: Stand-by</p>
 </div>
 
-<!-- Handmatige pijltoetsen direct onder het gekleurde vak -->
+<!-- Handmatige pijltoetsen aan de zijkanten -->
 <div class="handmatige-navigatie">
     <button class="nav-pijl-btn" onclick="handmatigeHalteWissel(-1)">◀</button>
     <button class="nav-pijl-btn" onclick="handmatigeHalteWissel(1)">▶</button>
@@ -151,6 +152,7 @@
 
 <!-- KOPPELING MET EXTERNE HALTES BESTAND -->
 <script src="haltes510.js"></script>
+
 <script>
 let watchId = null;
 let huidigeHalteIndex = 0;
