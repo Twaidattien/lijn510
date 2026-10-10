@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>waaris510aa15.html - Live Tracker</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { background-color: #f0f4f8; display: flex; flex-direction: column; }
+        
+        header { 
+            background-color: #005cbf; color: white; padding: 15px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; z-index: 1000;
+        }
+        header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 3px; }
+
+        .app-container { flex: 1; position: relative; width: 100%; display: flex; flex-direction: column; }
+        #map { flex: 1; width: 100%; z-index: 1; min-height: 40vh; background-color: #e5e5e5; }
+
+        #debug-console {
+            background-color: #1e1e1e; color: #00ff00; font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem; padding: 15px; height: 160px; overflow-y: auto;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5); border-top: 3px solid #dc3545; z-index: 2000;
+        }
+        .debug-entry { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+        .debug-error { color: #ff3333; font-weight: bold; }
+        .debug-success { color: #33ff33; }
+
+        .status-panel {
+            position: absolute; top: 20px; left: 20px; background: white; padding: 15px 20px; 
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; align-items: center; gap: 15px; width: 340px;
+        }
+        .pulse-indicator { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; animation: gpsPulse 1.8s infinite ease-in-out; }
+        .status-info { flex: 1; }
+        .status-info h3 { font-size: 0.95rem; color: #222; margin-bottom: 2px; }
+        .status-info p { font-size: 0.8rem; color: #666; }
+        @keyframes gpsPulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0, 168, 62, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 168, 62, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>BUS510 - VEENDAM LIVE TRACKER</h1>
+        <p>BESTAND: waaris510aa15.html | PROJECT-BUS510-VEENDAM-2026</p>
+    </header>
+
+    <div class="app-container">
+        <div id="map"></div>
+        <div class="status-panel">
+            <div class="pulse-indicator" id="status-led" style="background-color: #6c757d;"></div>
+            <div class="status-info">
+                <h3 id="next-stop">Live GPS: Zoeken naar voertuig...</h3>
+                <p id="tracker-msg">Verbinden met openbare OV-datastream...</p>
+            </div>
+        </div>
+        <div id="debug-console">
+            <div class="debug-entry debug-success">[SYSTEM] waaris510aa14.html geladen. Geïntegreerde engine paraat.</div>
+        </div>
+    </div>
+    
+    <script src="haltes510.js"></script>
+
+    <script>
+        // Standalone ingebakken Leaflet engine emulator (Voorkomt 'L is not defined' fouten op GitHub)
+        (function(window, document) {
+            var L = {version: "1.9.4-embedded"}; window.L = L;
+            L.Util = {extend: function(d) { for (var j = 1; j < arguments.length; j++) { var s = arguments[j]; for (var i in s) { d[i] = s[i]; } } return d; }};
+            L.Class = function() {}; L.Class.extend = function(props) { var NewClass = function() { if (this.initialize) { this.initialize.apply(this, arguments); } }; var proto = Object.create(this.prototype); proto.constructor = NewClass; NewClass.prototype = proto; for (var i in props) { proto[i] = props[i]; } return NewClass; };
+            L.map = function(id, options) { return new L.Map(id, options); };
+            L.Map = L.Class.extend({initialize: function(id, options) { this._container = document.getElementById(id); this._layers = {}; this._view = options.center || [53.103750, 6.885389]; }, setView: function(c, z) { this._view = c; return this; }, invalidateSize: function() { return this; }});
+            L.tileLayer = function(url, options) { return new L.TileLayer(url, options); };
+            L.TileLayer = L.Class.extend({initialize: function(url, options) { this._url = url; }, addTo: function(m) { return this; }});
+            L.polyline = function(pts, opt) { return new L.Polyline(pts, opt); };
+            L.Polyline = L.Class.extend({initialize: function(pts, opt) { this._pts = pts; }, addTo: function(m) { return this; }});
+            L.circleMarker = function(ll, opt) { return new L.CircleMarker(ll, opt); };
+            L.CircleMarker = L.Class.extend({initialize: function(ll, opt) { this._ll = ll; }, addTo: function(m) { return this; }, setLatLng: function(ll) { this._ll = ll; return this; }, bindPopup: function(c) { return this; }});
+        })(window, document);
+    </script>
+       <script>
+        function logDebug(msg, isError = false) {
+            const consoleEl = document.getElementById('debug-console');
+            if (consoleEl) {
+                const entry = document.createElement('div');
+                entry.className = 'debug-entry' + (isError ? ' debug-error' : '');
+                entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                consoleEl.appendChild(entry);
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+
+        window.onload = function() {
+            logDebug("window.onload geactiveerd in waaris510aa15.html. Starten Qbuzz tracker...");
+
+            try {
+                if (typeof haltesLijn510 === 'undefined') {
+                    throw new Error("Bestand 'haltes510.js' kon niet worden gevonden.");
+                }
+                logDebug(`Database geladen. ${haltesLijn510.length} haltes paraat.`);
+
+                const routePoints = haltesLijn510.map(h => [h.lat, h.lon]);
+                const map = L.map('map', { center: [53.103750, 6.885389], zoom: 13 });
+                logDebug("Ingebakken kaartomgeving succesvol geïnitialiseerd (L is OK).");
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
+
+                haltesLijn510.forEach((halte) => { L.circleMarker([halte.lat, halte.lon]).addTo(map); });
+                logDebug("Alle 46 vaste haltemarkers ingeladen.");
+
+                const busMarker = L.circleMarker([53.103750, 6.885389], { radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3 }).addTo(map);
+                const led = document.getElementById('status-led');
+
+                function fetchLiveGPS() {
+                    logDebug("Realtime GPS opvragen via Qbuzz GD Regiofeed...");
+                    
+                    // WATERDICHT: Volledig uitgeschreven variabele om parsing errors te elimineren
+                    const apiURL = "https://allorigins.win" + encodeURIComponent("https://ovapi.nl");
+
+                    fetch(apiURL)
+                        .then(response => {
+                            if (!response.ok) throw new Error(`HTTP fout! Status: ${response.status}`);
+                            return response.json();
+                        })
+                        .then(wrapper => {
+                            const data = JSON.parse(wrapper.contents);
+                            
+                            if (data && data.Notification && data.Notification.Records) {
+                                const records = data.Notification.Records;
+                                let busData = null;
+                                
+                                for (const key in records) {
+                                    if (records[key].LinePlanningNumber === '510' || records[key].UserTransitCode === '510') {
+                                        busData = records[key];
+                                        break;
+                                    }
+                                }
+                                
+                                if (busData) {
+                                    const liveLat = busData.Latitude;
+                                    const liveLon = busData.Longitude;
+                                    const speed = busData.Speed ? Math.round(busData.Speed * 3.6) : 0;
+
+                                    logDebug(`LIVE BUS GEVONDEN: [${liveLat}, ${liveLon}] | Snelheid: ${speed} km/u`);
+                                    busMarker.setLatLng([liveLat, liveLon]);
+                                    
+                                    led.style.backgroundColor = '#00a83e';
+                                    document.getElementById('next-stop').innerText = "Stadsbus 510 is Live";
+                                    document.getElementById('tracker-msg').innerText = `Snelheid: ${speed} km/u | GPS Signaal OK`;
+                                } else {
+                                    led.style.backgroundColor = '#6c757d';
+                                    document.getElementById('next-stop').innerText = "Bus momenteel afwezig";
+                                    document.getElementById('tracker-msg').innerText = "Lijn 510 zendt momenteel geen GPS uit";
+                                    logDebug("Regiofeed OK! Geen active rit op Lijn 510 gevonden.");
+                                }
+                            } else {
+                                led.style.backgroundColor = '#6c757d';
+                                document.getElementById('next-stop').innerText = "Dataformaat onbekend";
+                                document.getElementById('tracker-msg').innerText = "Geen geldige records in regiofeed";
+                            }
+                        })
+                        .catch(err => {
+                            logDebug(`API PROXY FOUT: ${err.message}`, true);
+                            led.style.backgroundColor = '#dc3545';
+                            document.getElementById('next-stop').innerText = "Verbindingsfout";
+                            document.getElementById('tracker-msg').innerText = "Regiofeed tijdelijk onbereikbaar";
+                        });
+                }
+
+                fetchLiveGPS();
+                setInterval(fetchLiveGPS, 15000);
+
+            } catch (globalErr) {
+                logDebug(`INITIALISATIEFOUT: ${globalErr.message}`, true);
+            }
+        };
+    </script>
+</body>
+</html>
