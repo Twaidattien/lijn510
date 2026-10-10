@@ -241,8 +241,14 @@ function analyseerLocatie(position) {
     }
 
     // STAP 2: Bepalen of we doorrijden naar de volgende halte
-    // AANGEPAST: We zetten de marge voor Halte 1 (index 0) nu op 250 meter vanwege de ruime lus over de Parallelweg / Spoorweg.
-    const vertrekGrens = (huidigeHalteIndex === 0) ? 250 : 55;
+    // GECORRIGEERD: Station (index 0) = 250m. Halte 31 (Sint Franciscus, index 31) = 300m wegrijdafstand. De rest blijft 55m.
+    let vertrekGrens = 55;
+    if (huidigeHalteIndex === 0) {
+        vertrekGrens = 250;
+    } else if (huidigeHalteIndex === 31) {
+        vertrekGrens = 300;
+    }
+
     const magDoorschakelen = (afstand > vertrekGrens && isBijHalte === true && acc < 40);
 
     if (magDoorschakelen) {
