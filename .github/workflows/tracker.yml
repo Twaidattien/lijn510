@@ -13,12 +13,10 @@ jobs:
 
       - name: Haal live data op
         run: |
-          # HIER ZIT DE EXACTE CORRECTIE: Direct naar de actuele JSON-feed van Bison
           RESPONSE=$(curl -s "https://ovapi.nl")
           if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
-            echo '{"isLive": false, "error": "Geen geldige JSON-data ontvangen"}' > live-bus.json
+            echo '{"isLive": false, "error": "Geen data"}' > live-bus.json
           else
-            # Filter direct op lijn 510 via jq
             BUS=$(echo "$RESPONSE" | jq '.Notification.Records[] | select(.LinePlanningNumber=="510" or .UserTransitCode=="510")' | head -n 1)
             if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
               echo '{"isLive": false, "msg": "Geen actieve bus op Lijn 510 gedetecteerd in regiofeed"}' > live-bus.json
@@ -27,7 +25,6 @@ jobs:
               LON=$(echo "$BUS" | jq '.Longitude')
               SPD=$(echo "$BUS" | jq '.Speed')
               KMH=$(python3 -c "print(round($SPD * 3.6))" 2>/dev/null || echo "0")
-              
               echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
             fi
           fi
