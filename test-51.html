@@ -163,6 +163,14 @@ window.onload = function() {
     // Start de timer die om de 10 seconden de klok én de stiptheid ververst
     setInterval(updateKlokEnStiptheid, 10000);
     vulDropdownMenu();
+
+    // DYNAMISCH DEBUG-VENSTER TONEN OF VERBERGEN
+    const debugVenster = document.getElementById('debug-venster');
+    if (typeof toonDebug !== 'undefined' && toonDebug === 0) {
+        debugVenster.style.display = 'none';
+    } else {
+        debugVenster.style.display = 'block';
+    }
 };
 
 function updateKlokEnStiptheid() {
