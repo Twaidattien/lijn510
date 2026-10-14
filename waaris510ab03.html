@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>waaris510ab03.html - Live Tracker</title>
     
-    <!-- We linken nu rechtstreeks naar jouw eigen lokale engine en stijlen! -->
-    <link rel="stylesheet" href="leaflet.css" />
-    <script src="leaflet.js"></script>
+    <!-- Officiële, volledige en stabiele Leaflet kaartstijlen en engine inladen -->
+    <link rel="stylesheet" href="https://unpkg.com" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Jouw eigen lokale haltelijst inladen -->
     <script src="haltes510.js"></script>
 
     <style>
@@ -67,7 +69,7 @@
             </div>
         </div>
         <div id="debug-console">
-            <div class="debug-entry debug-success">[SYSTEM] waaris510ab03.html geladen. Volledig lokale netwerkomgeving actief.</div>
+            <div class="debug-entry debug-success">[SYSTEM] waaris510ab03.html geladen. Officiële CDN engine-modus actief.</div>
         </div>
     </div>
 
@@ -84,34 +86,38 @@
         }
 
         window.onload = function() {
-            logDebug("Engine opgestart in waaris510ab03.html. Initialiseer lokale kaart...");
+            logDebug("Engine opgestart in waaris510ab03.html. Initialiseer kaartsysteem...");
 
             try {
                 if (typeof haltesLijn510 === 'undefined') {
                     throw new Error("Bestand 'haltes510.js' ontbreekt in deze map.");
                 }
-                if (typeof L === 'undefined') {
-                    throw new Error("Lokaal bestand 'leaflet.js' kon niet worden geïnitialiseerd.");
+                if (typeof L === 'undefined' || typeof L.map !== 'function') {
+                    throw new Error("Volledige Leaflet engine kon niet extern worden ingeladen.");
                 }
-                logDebug(`Haltes geladen: ${haltesLijn510.length} locaties herkend. L is OK!`);
+                logDebug(`Haltes geladen: ${haltesLijn510.length} locaties herkend. Leaflet is OK!`);
 
                 const routePoints = haltesLijn510.map(h => [h.lat, h.lon]);
                 
-                // Start de kaartomgeving via de lokale engine
-                const map = L.map('map', { center: [53.103750, 6.885389], zoom: 13 });
-                logDebug("Lokale OpenStreetMap engine succesvol opgestart.");
+                // Start de echte kaart gecentreerd op Station Veendam
+                const map = L.map('map').setView([53.103750, 6.885389], 13);
+                logDebug("Echte OpenStreetMap kaart succesvol opgestart.");
 
-                if (typeof L.tileLayer === 'function') {
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                }
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
                 
+                // Teken de routelijn tussen de haltes
                 L.polyline(routePoints, { color: '#005cbf', weight: 5, opacity: 0.75, dashArray: '1, 5' }).addTo(map);
 
+                // Zet kleine blauwe markers op alle haltes
                 haltesLijn510.forEach((halte) => { 
-                    L.circleMarker([halte.lat, halte.lon]).addTo(map);
+                    L.circleMarker([halte.lat, halte.lon], { radius: 5, color: '#005cbf', fillColor: '#fff', fillOpacity: 1 }).addTo(map)
+                     .bindPopup(`<b>${halte.naam}</b><br>Doorkomstminuut: .${halte.minuut}`);
                 });
-                logDebug("Routelijn en markers succesvol geplaatst via lokale engine.");
+                logDebug("Routelijn en markers succesvol op de kaart geplaatst.");
 
+                // Maak de live rode bus marker aan
                 const busMarker = L.circleMarker([53.103750, 6.885389], { radius: 11, color: '#fff', fillColor: '#e50000', fillOpacity: 1, weight: 3 }).addTo(map);
                 const led = document.getElementById('status-led');
 
