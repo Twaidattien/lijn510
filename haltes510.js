@@ -3,7 +3,7 @@ const toonDebug = 0;
 
 // Haltes met naam, minuut, lat, lon, [aanrijGrens (standaard 55)], [vertrekGrens (standaard 55), [actief (standaard 1)]
 const haltesLijn510 = [
-    { naam: "1. Station Veendam (Vertrek)", minuut: 42, lat: 53.103750, lon: 6.885389, vertrekGrens: 250 },
+    { naam: "1. Station Veendam", minuut: 42, lat: 53.103750, lon: 6.885389, vertrekGrens: 250 },
     { naam: "2. Jakob Bruggemalaan (Heen)", minuut: 45, lat: 53.110548, lon: 6.886444 },
     { naam: "3. Beneden Oosterdiep", minuut: 46, lat: 53.114273, lon: 6.887702 },
     { naam: "4. Nassaustraat", minuut: 47, lat: 53.115265, lon: 6.883968 },
