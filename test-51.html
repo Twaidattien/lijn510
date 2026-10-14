@@ -181,6 +181,11 @@ function updateKlokEnStiptheid() {
 function vulDropdownMenu() {
     const selectEl = document.getElementById('start-halte-select');
     haltesLijn510.forEach((halte, index) => {
+        // Controleer of de halte inactief is (actief === 0). Zo ja, sla deze over.
+        if (halte.actief === 0) {
+            return; 
+        }
+        
         const optie = document.createElement('option');
         optie.value = index;
         optie.innerText = halte.naam;
