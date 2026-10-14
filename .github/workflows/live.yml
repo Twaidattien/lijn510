@@ -17,24 +17,24 @@ jobs:
 
       - name: Ophalen openbare voertuigposities
         run: |
-          set +e
-          RESPONSE=$(curl -s --max-time 15 "https://bison.ovapi.nl/vehiclePositions.json")
+            set +e
+            RESPONSE=$(curl -s --max-time 15 "https://bison.ovapi.nl/vehiclePositions.json")
           
-          if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
-            echo '{"isLive": false, "msg": "OVapi server onbereikbaar of onderhoud"}' > live-bus.json
-          else
-            # Zoekt flexibel naar lijn 510 in de gehele JSON-datastructuur
-            BUS=$(echo "$RESPONSE" | jq '[.. | objects | select(.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510")] | .[0]')
-            
-            if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
-              echo '{"isLive": false, "msg": "Bus 510 is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
+            if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
+              echo '{"isLive": false, "msg": "OVapi server onbereikbaar of onderhoud"}' > live-bus.json
             else
-              LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
-              LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
-              SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
+              # Zoekt flexibel naar lijn 510 in de gehele JSON-datastructuur
+              BUS=$(echo "$RESPONSE" | jq '[.. | objects | select(.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510")] | .[0]')
+            
+              if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
+                echo '{"isLive": false, "msg": "Bus 510 is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
+             else
+                LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
+                LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
+                SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
               
-              # Veilig omrekenen naar km/u met Python, vangt lege waarden netjes op
-              KMH=$(python3 -c "
+                # Veilig omrekenen naar km/u met Python, vangt lege waarden netjes op
+                KMH=$(python3 -c "
 try:
     spd = float('$SPD')
     print(round(spd * 3.6))
