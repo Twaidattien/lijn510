@@ -37,7 +37,6 @@ jobs:
               fi
             fi
           fi
-
       - name: Veilig Commit en Push
         run: |
           git config --global user.name "GitHub Bot"
