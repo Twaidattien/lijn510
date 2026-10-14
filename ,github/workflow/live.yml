@@ -18,7 +18,7 @@ jobs:
       - name: Ophalen openbare voertuigposities
         run: |
           set +e
-          RESPONSE=$(curl -s --max-time 15 "https://ovapi.nl")
+          RESPONSE=$(curl -s --max-time 15 "https://bison.ovapi.nl/vehiclePositions.json")
           
           if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
             echo '{"isLive": false, "msg": "OVapi server onbereikbaar of onderhoud"}' > live-bus.json
