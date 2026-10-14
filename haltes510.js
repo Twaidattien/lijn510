@@ -43,6 +43,6 @@ const haltesLijn510 = [
     { naam: "40. Kazemierstraat", minuut: 33, lat: 53.105209, lon: 6.871542 },
     { naam: "41. Lidl en Poiesz", minuut: 34, lat: 53.105327, lon: 6.874180 },
     { naam: "42. Kerkplein", minuut: 35, lat: 53.105908, lon: 6.875570 },
-    { naam: "43. Raadhuisplein 5", minuut: 36, lat: 53.104217, lon: 6.877558 },
+    { naam: "43. Raadhuisplein 5", minuut: 36, lat: 53.104217, lon: 6.877558, actief: 0 },
     { naam: "44. Bocht Oosterdiep", minuut: 38, lat: 53.104468, lon: 6.880000 }
 ];
