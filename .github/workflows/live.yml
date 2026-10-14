@@ -40,12 +40,12 @@ try:
     print(round(spd * 3.6))
 except:
     print(0)
-")
+ ")
               
-              if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
-                echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
-              else
-                echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
+                if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
+                  echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
+                else
+                  echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
               fi
             fi
           fi
