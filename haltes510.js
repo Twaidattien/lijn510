@@ -1,3 +1,7 @@
+// SCHAKELAAR VOOR HET DEBUG-VENSTER: 1 = tonen, 0 = verbergen
+const toonDebug = 0; 
+
+// Haltes met naam, minuut, lat, lon, [aanrijGrens (standaard 55)], [vertrekGrens (standaard 55), [actief (standaard 1)]
 const haltesLijn510 = [
     { naam: "1. Station Veendam (Vertrek)", minuut: 42, lat: 53.103750, lon: 6.885389, vertrekGrens: 250 },
     { naam: "2. Jakob Bruggemalaan (Heen)", minuut: 45, lat: 53.110548, lon: 6.886444 },
