@@ -314,26 +314,27 @@ function berekenAfstand(lat1, lon1, lat2, lon2) {
     return R * c; 
 }
 
+// HULPFUNCTIE: Zoekt de eerstvolgende VORIGE actieve halte in de lijst
+function bepaalVorigeActieveIndex(startIndex) {
+    let checkIndex = (startIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
+    // Blijf achteruit zoeken tot we een halte vinden die WEL actief is
+    while (haltesLijn510[checkIndex].actief === 0) {
+        checkIndex = (checkIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
+    }
+    return checkIndex;
+}
+
+// DE VOLLEDIG DYNAMISCHE HANDMATIGE WISSEL:
 function handmatigeHalteWissel(richting) {
     if (richting === 1) {
-        if (huidigeHalteIndex === 43) {
-            huidigeHalteIndex = 45;
-        } else {
-            huidigeHalteIndex = (huidigeHalteIndex + 1) % haltesLijn510.length;
-        }
+        // Gebruikt de al bestaande hulpfunctie om vooruit te zoeken
+        huidigeHalteIndex = bepaalVolgendeActieveIndex(huidigeHalteIndex);
     } else if (richting === -1) {
-        if (huidigeHalteIndex === 45) {
-            huidigeHalteIndex = 43;
-        } else {
-            huidigeHalteIndex = (huidigeHalteIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
-        }
+        // Gebruikt de nieuwe hulpfunctie om achteruit te zoeken
+        huidigeHalteIndex = bepaalVorigeActieveIndex(huidigeHalteIndex);
     }
 
-    if (huidigeHalteIndex === 44) {
-        huidigeHalteIndex = 45;
-    }
-
-    // Reset de bijnahalte vlag bij een handmatige wissel, zodat de automatische overgang voor de nieuwe halte weer schoon luistert
+    // Reset de bijnahalte-vlag, zodat de automatische overgang weer schoon luistert
     isBijHalte = false;
 
     const actieveHalte = haltesLijn510[huidigeHalteIndex];
