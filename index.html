@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="nl">
+// versie test-60.html
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stadsbus Veendam 510 Assistent</title>
+    <!-- Standaardnaam bij het toevoegen aan het startscherm (iOS & Android) -->
+    <meta name="apple-mobile-web-app-title" content="Stadsbus">
+    <meta name="application-name" content="Stadsbus">
+    <!-- Icoontje voor het iPhone startscherm -->
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <!-- Icoontje voor het Android-telefoons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="apple-touch-icon.png">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            transition: background-color 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #000;
+            text-align: center;
+            background-color: #ffffff;
+            box-sizing: border-box;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.92);
+            padding: 40px 20px;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            width: 90%;
+            max-width: 550px;
+            box-sizing: border-box;
+        }
+        h1 { font-size: 2.2rem; margin: 0 0 10px 0; color: #222; }
+        .status-text { font-size: 2rem; font-weight: bold; text-transform: uppercase; margin: 15px 0; }
+        .time-diff { font-size: 4.5rem; font-weight: 900; margin: 10px 0; }
+        .info-gps { font-size: 1rem; color: #555; margin-top: 20px; }
+        
+        .select-start-halte {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: 2px solid #ccc;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-sizing: border-box;
+        }
+        
+        button {
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            border: none;
+            background-color: #004B87;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        button:active { transform: scale(0.98); }
+        
+        /* Gecorrigeerd: Container verdeelt de ruimte, knoppen blijven compact */
+        .handmatige-navigatie {
+            margin: 20px 0 10px 0;
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 550px;
+            box-sizing: border-box;
+            padding: 0 5px; /* Lichte marge vanaf de rand van de container */
+        }
+        .nav-pijl-btn {
+            padding: 15px 35px;
+            font-size: 1.8rem;
+            background-color: #333;
+            color: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            border: none;
+            cursor: pointer;
+        }
+        .nav-pijl-btn:active { transform: scale(0.95); }
+
+        .test-btn {
+            padding: 5px 12px;
+            font-size: 0.9rem;
+            background-color: #444;
+            color: #fff;
+            border-radius: 4px;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+
+        #debug-venster {
+            background: #222;
+            color: #00ff00;
+            font-family: monospace;
+            text-align: left;
+            padding: 15px;
+            margin: 10px auto 20px auto;
+            width: 90%;
+            max-width: 550px;
+            border-radius: 12px;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+        #debug-venster div {
+            margin-bottom: 5px;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Gekleurde container -->
+<div class="container" id="app-box">
+    <div id="actuele-tijd" style="font-size: 3.0rem; font-weight: 900; color: #000000; margin-bottom: 15px;">--:--</div>
+    <h1 id="halte-naam">Lijn 510 Veendam</h1>
+    <p id="status-tekst">Kies je starthalte en start de route</p>
+    
+    <select id="start-halte-select" class="select-start-halte">
+        <!-- Wordt gevuld door JavaScript -->
+    </select>
+
+    <div class="time-diff" id="tijds-verschil">--</div>
+    <button id="start-btn" onclick="startBusTracking()">START ROUTE</button>
+    <p class="info-gps" id="gps-debug">GPS: Stand-by</p>
+</div>
+
+<!-- Compacte handmatige pijltoetsen strak aan de zijkanten -->
+<div class="handmatige-navigatie">
+    <button class="nav-pijl-btn" onclick="handmatigeHalteWissel(-1)">◀</button>
+    <button class="nav-pijl-btn" onclick="handmatigeHalteWissel(1)">▶</button>
+</div>
+
+<!-- Debug / Monitor venster -->
+<div id="debug-venster">
+    <h3>Live Code Monitor</h3>
+    <div><b>Doelhalte:</b> <span id="debug-stop-name">-</span></div>
+    <div><b>Afstand:</b> <span id="debug-stop-dist">-</span></div>
+    <div style="margin-top: 10px;">
+        <b>Handmatig skippen:</b>
+        <button class="test-btn" onclick="handmatigeHalteWissel(-1)">◀ Vorige</button>
+        <button class="test-btn" onclick="handmatigeHalteWissel(1)">Volgende ▶</button>
+    </div>
+</div>
+
+<!-- KOPPELING MET EXTERNE HALTES BESTAND -->
+<script src="haltes510.js"></script>
+
+<script>
+let watchId = null;
+let huidigeHalteIndex = 0;
+// Schakelaar om te onthouden of de bus momenteel bij de halte staat
+let isBijHalte = false; 
+let laatsteGpsUpdate = Date.now(); // <-- NIEUW: Onthoudt wanneer de GPS voor het laatst sprak
+  
+window.onload = function() {
+    // Start de timer die om de 10 seconden de klok én de stiptheid ververst
+    setInterval(updateKlokEnStiptheid, 10000);
+    vulDropdownMenu();
+
+    // DYNAMISCH DEBUG-VENSTER TONEN OF VERBERGEN
+    const debugVenster = document.getElementById('debug-venster');
+    if (typeof toonDebug !== 'undefined' && toonDebug === 0) {
+        debugVenster.style.display = 'none';
+    } else {
+        debugVenster.style.display = 'block';
+    }
+};
+
+function updateKlokEnStiptheid() {
+    const nu = new Date();
+    const uren = String(nu.getHours()).padStart(2, '0');
+    const minuten = String(nu.getMinutes()).padStart(2, '0');
+    document.getElementById('actuele-tijd').innerText = `${uren}:${minuten}`;
+
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn && startBtn.style.display === 'none') {
+        const doelHalte = haltesLijn510[huidigeHalteIndex];
+        berekenStiptheid(doelHalte.minuut);
+        
+        // GPS WAAKHOND: Controleer of de GPS is vastgelopen (langer dan 30 seconden stil)
+        if (Date.now() - laatsteGpsUpdate > 30000) {
+            document.getElementById('gps-debug').innerText = "GPS: Herstarten...";
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+            laatsteGpsUpdate = Date.now(); // Reset de timer voor de volgende check
+            watchId = navigator.geolocation.watchPosition(analyseerLocatie, toonGpsFout, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
+            });
+        }
+    }
+}
+
+function vulDropdownMenu() {
+    const selectEl = document.getElementById('start-halte-select');
+    haltesLijn510.forEach((halte, index) => {
+        // Controleer of de halte inactief is (actief === 0). Zo ja, sla deze over.
+        if (halte.actief === 0) {
+            return; 
+        }
+        
+        const optie = document.createElement('option');
+        optie.value = index;
+        optie.innerText = halte.naam;
+        selectEl.appendChild(optie);
+    });
+}
+
+function startBusTracking() {
+    const startBtn = document.getElementById('start-btn');
+    const selectEl = document.getElementById('start-halte-select');
+    
+    // ANTI-SPAM: Blokkeer de knop direct zodat dubbelklikken onmogelijk is
+    startBtn.disabled = true;
+    
+    huidigeHalteIndex = parseInt(selectEl.value);
+
+    startBtn.style.display = 'none';
+    selectEl.style.display = 'none';
+    document.getElementById('halte-naam').innerText = "GPS opstarten...";
+    
+    if (navigator.geolocation) {
+        if (navigator.wakeLock) { navigator.wakeLock.request('screen').catch(()=>{}); }
+        
+        // Sla de huidige tijd op als startpunt voor de waakhond
+        laatsteGpsUpdate = Date.now();
+        
+        watchId = navigator.geolocation.watchPosition(analyseerLocatie, toonGpsFout, {
+            enableHighAccuracy: true,
+            maximumAge: 0, 
+            timeout: 5000
+        });
+        
+        const doelHalte = haltesLijn510[huidigeHalteIndex];
+        berekenStiptheid(doelHalte.minuut);
+        document.getElementById('halte-naam').innerText = doelHalte.naam;
+    } else {
+        alert("Fout: Jouw telefoon ondersteunt geen GPS.");
+        startBtn.disabled = false; // Herstel de knop bij een harde fout
+    }
+}
+
+// HULPFUNCTIE: Zoekt de eerstvolgende actieve halte in de lijst (rekening houdend met het einde van de lijst)
+function bepaalVolgendeActieveIndex(startIndex) {
+    let checkIndex = (startIndex + 1) % haltesLijn510.length;
+    // Blijf zoeken tot we een halte vinden die NIET inactief is
+    while (haltesLijn510[checkIndex].actief === 0) {
+        checkIndex = (checkIndex + 1) % haltesLijn510.length;
+    }
+    return checkIndex;
+}
+
+function analyseerLocatie(position) {
+    laatsteGpsUpdate = Date.now();
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    const acc = position.coords.accuracy;
+    
+    document.getElementById('gps-debug').innerText = `GPS: ${Math.round(acc)}m`;
+
+    // VEILIGHEIDSCHECK: Mocht de app door GPS-ruis op een inactieve halte staan, 
+    // dan dwingen we hem direct naar de eerstvolgende actieve halte.
+    if (haltesLijn510[huidigeHalteIndex].actief === 0) {
+        huidigeHalteIndex = bepaalVolgendeActieveIndex(huidigeHalteIndex);
+    }
+
+    const doelHalte = haltesLijn510[huidigeHalteIndex];
+    const afstand = berekenAfstand(lat, lon, doelHalte.lat, doelHalte.lon);
+    
+    document.getElementById('debug-stop-name').innerText = doelHalte.naam;
+    document.getElementById('debug-stop-dist').innerText = `${Math.round(afstand)}m`;
+    document.getElementById('halte-naam').innerText = doelHalte.naam;
+
+    berekenStiptheid(doelHalte.minuut);
+
+    const aanrijGrens = doelHalte.aanrijGrens || 55;
+    const vertrekGrens = doelHalte.vertrekGrens || 55;
+
+    if (afstand <= aanrijGrens && acc < 40) {
+        isBijHalte = true; 
+    }
+
+    const magDoorschakelen = (afstand > vertrekGrens && isBijHalte === true && acc < 40);
+
+    if (magDoorschakelen) {
+        isBijHalte = false; 
+        
+        // AUTOMATISCHE OMLEIDING: We berekenen dynamisch de volgende actieve halte index!
+        huidigeHalteIndex = bepaalVolgendeActieveIndex(huidigeHalteIndex);
+        
+        const volgende = haltesLijn510[huidigeHalteIndex];
+        document.getElementById('debug-stop-name').innerText = volgende.naam;
+        document.getElementById('halte-naam').innerText = volgende.naam;
+        berekenStiptheid(volgende.minuut);
+    }
+}
+
+function berekenStiptheid(geplandeMinuut) {
+    const nu = new Date();
+    const huidigeMinuut = nu.getMinutes();
+    let verschil = huidigeMinuut - geplandeMinuut;
+    
+    if (verschil < -30) verschil += 60;
+    if (verschil > 30) verschil -= 60;
+
+    const statusTekstEl = document.getElementById('status-tekst');
+    const verschilEl = document.getElementById('tijds-verschil');
+    const boxEl = document.getElementById('app-box');
+
+    if (verschil < 0) {
+        statusTekstEl.innerText = "TE VROEG";
+        verschilEl.innerText = `-${Math.abs(verschil)}`;
+        boxEl.style.backgroundColor = "#ff0000"; // Rood = WACHTEN
+    } else if (verschil >= 0 && verschil <= 2) {
+        statusTekstEl.innerText = "OP TIJD";
+        verschilEl.innerText = verschil > 0 ? `+${verschil}` : "0";
+        boxEl.style.backgroundColor = "#00ff00"; // Groen = VERTREKKEN
+    } else {
+        statusTekstEl.innerText = "TE LAAT";
+        verschilEl.innerText = `+${verschil}`;
+        boxEl.style.backgroundColor = "#ffff00"; // Geel = VERTREKKEN (vertraging)
+    }
+}
+
+function berekenAfstand(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; 
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; 
+}
+
+// HULPFUNCTIE: Zoekt de eerstvolgende VORIGE actieve halte in de lijst
+function bepaalVorigeActieveIndex(startIndex) {
+    let checkIndex = (startIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
+    // Blijf achteruit zoeken tot we een halte vinden die WEL actief is
+    while (haltesLijn510[checkIndex].actief === 0) {
+        checkIndex = (checkIndex - 1 + haltesLijn510.length) % haltesLijn510.length;
+    }
+    return checkIndex;
+}
+
+// DE VOLLEDIG DYNAMISCHE HANDMATIGE WISSEL:
+function handmatigeHalteWissel(richting) {
+    if (richting === 1) {
+        // Gebruikt de al bestaande hulpfunctie om vooruit te zoeken
+        huidigeHalteIndex = bepaalVolgendeActieveIndex(huidigeHalteIndex);
+    } else if (richting === -1) {
+        // Gebruikt de nieuwe hulpfunctie om achteruit te zoeken
+        huidigeHalteIndex = bepaalVorigeActieveIndex(huidigeHalteIndex);
+    }
+
+    // Reset de bijnahalte-vlag, zodat de automatische overgang weer schoon luistert
+    isBijHalte = false;
+
+    const actieveHalte = haltesLijn510[huidigeHalteIndex];
+    document.getElementById('debug-stop-name').innerText = actieveHalte.naam;
+    document.getElementById('halte-naam').innerText = actieveHalte.naam;
+    document.getElementById('debug-stop-dist').innerText = "-"; 
+    
+    if (typeof berekenStiptheid === "function") {
+        berekenStiptheid(actieveHalte.minuut);
+    }
+}
+
+function toonGpsFout(error) {
+    document.getElementById('gps-debug').innerText = `GPS Fout: ${error.message}`;
+}
+</script>
+</body>
+</html>
