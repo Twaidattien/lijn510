@@ -1,0 +1,62 @@
+name: LiveTracker510
+
+on:
+  schedule:
+    # Draait elke 5 minuten om de locatie te peilen
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Hiermee kun je het script handmatig starten om te testen
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ophalen openbare voertuigposities
+        run: |
+          set +e
+          RESPONSE=$(curl -s --max-time 15 "https://ovapi.nl")
+          
+          if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
+            echo '{"isLive": false, "msg": "OVapi server onbereikbaar of onderhoud"}' > live-bus.json
+          else
+            # Zoekt flexibel naar lijn 510 in de gehele JSON-datastructuur
+            BUS=$(echo "$RESPONSE" | jq '[.. | objects | select(.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510")] | .[0]')
+            
+            if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
+              echo '{"isLive": false, "msg": "Bus 510 is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
+            else
+              LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
+              LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
+              SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
+              
+              # Veilig omrekenen naar km/u met Python, vangt lege waarden netjes op
+              KMH=$(python3 -c "
+try:
+    spd = float('$SPD')
+    print(round(spd * 3.6))
+except:
+    print(0)
+")
+              
+              if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
+                echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
+              else
+                echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
+              fi
+            fi
+          fi
+
+      - name: Veilig Commit en Push
+        run: |
+          git config --global user.name "GitHub Bot"
+          git config --global user.email "actions@github.com"
+          git add live-bus.json
+          # Alleen pushen als de locatie daadwerkelijk is veranderd
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Update GPS Bus 510 [skip ci]"
+            git push
+          fi
