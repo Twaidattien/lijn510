@@ -28,13 +28,8 @@ jobs:
               LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
               LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
               SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
-              KMH=$(python3 -c "
-try:
-    spd = float('$SPD')
-    print(round(spd * 3.6))
-except:
-    print(0)
-")
+              KMH=$(echo "scale=0; ($SPD * 3.6)/1" | bc 2>/dev/null || echo "0")
+
               if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
                 echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
               else
