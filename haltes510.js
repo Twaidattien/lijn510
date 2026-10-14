@@ -1,5 +1,5 @@
 // SCHAKELAAR VOOR HET DEBUG-VENSTER: 1 = tonen, 0 = verbergen
-const toonDebug = 0; 
+const toonDebug = 1; 
 
 // Haltes met naam, minuut, lat, lon, [aanrijGrens (standaard 55)], [vertrekGrens (standaard 55), [actief (standaard 1)]
 const haltesLijn510 = [
