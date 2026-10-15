@@ -62,13 +62,12 @@ jobs:
           git config --global user.name "GitHub Bot"
           git config --global user.email "actions@github.com"
           
-          # Forceer het toevoegen van het bestand
+          # 1. Haal wijzigingen binnen en geef bij een conflict ALTIJD voorrang aan ons eigen nieuwe bestand (ours)
+          git pull origin main --rebase -X ours || true
+          
+          # 2. Voeg het bestand geforceerd toe en commit altijd
           git add live-bus.json
-          
-          # Haal wijzigingen binnen en geef bij een conflict ALTIJD voorrang aan ons eigen nieuwe bestand
-          git pull origin main --rebase -X theirs || git reset HEAD live-bus.json
-          
-          # Commit en push de boel definitief live
           git commit -m "Update GPS Bus 510 [skip ci]" --allow-empty
+          
+          # 3. Push de boel definitief live
           git push origin main
-
