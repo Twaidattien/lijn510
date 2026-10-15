@@ -15,27 +15,47 @@ jobs:
       - uses: actions/checkout@v4
       - name: Ophalen openbare voertuigposities
         run: |
-          # 1. Download de actuele posities via de gegarandeerd openbare Google Transit mirror
-          curl -sk "https://storage.googleapis.com/gbfs.itransit.nl/qbuzz/vehicles.json" > qbuzz-vehicles.json
+          node -e '
+            const https = require("https");
+            const fs = require("fs");
 
-          # 2. Filter binnen de data specifiek naar lijn 510
-          BUS=$(jq '[.data.vehicles[]? | select(.route_id=="510" or .route_short_name=="510")] | .' qbuzz-vehicles.json 2>/dev/null)
+            https.get("https://vps.openov.nl/kv6posinfo/vehiclePositions.json", (res) => {
+              let data = "";
+              res.on("data", (chunk) => { data += chunk; });
+              res.on("end", () => {
+                try {
+                  const json = JSON.parse(data);
+                  // We zoeken in de objecten naar Qbuzz lijn 510
+                  let gevondenBus = null;
+                  
+                  for (const key in json) {
+                    const pkt = json[key];
+                    if (pkt && (pkt.LinePlanningNumber === "510" || pkt.linePlanningNumber === "510") && 
+                        (pkt.DataOwnerCode === "QBUZZ" || pkt.dataOwnerCode === "QBUZZ")) {
+                      gevondenBus = pkt;
+                      break;
+                    }
+                  }
 
-          # 3. Verwerk de data en schrijf de status weg naar live-bus.json
-          if [ -z "$BUS" ] || [ "$BUS" = "null" ] || [ "$BUS" = "[]" ]; then
-            echo '{"isLive": false, "msg": "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
-          else
-            LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
-            LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
-            SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
-            KMH=$(echo "scale=0; ($SPD * 3.6)/1" | bc 2>/dev/null || echo "0")
+                  if (!gevondenBus) {
+                    fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)" }));
+                  } else {
+                    const lat = gevondenBus.Latitude || gevondenBus.latitude;
+                    const lon = gevondenBus.Longitude || gevondenBus.longitude;
+                    const spd = gevondenBus.Speed || gevondenBus.speed || 0;
+                    const kmh = Math.round(spd * 3.6);
 
-            if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
-              echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
-            else
-              echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
-            fi
-          fi
-
-          # 4. Ruim het tijdelijke bestand netjes op
-          rm -f raw-positions.json
+                    if (lat && lon) {
+                      fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: true, latitude: parseFloat(lat), longitude: parseFloat(lon), speed: kmh }));
+                    } else {
+                      fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten" }));
+                    }
+                  }
+                } catch (e) {
+                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Fout bij verwerken data" }));
+                }
+              });
+            }).on("error", (err) => {
+              fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Verbindingsfout" }));
+            });
+          '
