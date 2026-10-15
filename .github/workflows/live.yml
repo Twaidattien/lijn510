@@ -16,34 +16,29 @@ jobs:
 
       - name: Ophalen openbare voertuigposities
         run: |
-          set +e
-                   RESPONSE=$(curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --connect-timeout 10 --max-time 60 --retry 3 "https://vps.openov.nl/kv6posinfo/vehiclePositions.json")
-          if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
-            echo '{"isLive": false, "msg": "OVapi server onbereikbaar of onderhoud"}' > live-bus.json
-          else
-            # Waterdicht filter: Selecteert de array én pakt direct het eerste geldige Qbuzz 510 object (.[0])
-            BUS=$(echo "$RESPONSE" | jq '[.. | objects | select((.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510") and (.DataOwnerCode=="QBUZZ" or .dataOwnerCode=="QBUZZ"))] | .[0]')
-            if [ -z "$BUS" ] || [ "$BUS" = "null" ] || [ "$BUS" = "[]" ] || [ "$BUS" = "" ]; then
-              echo '{"isLive": false, "msg": "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
-            else
-              LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
-              LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
-              SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
-              KMH=$(echo "scale=0; ($SPD * 3.6)/1" | bc 2>/dev/null || echo "0")
+          # 1. Download de data rechtstreeks naar een tijdelijk bestand om Bash-geheugenproblemen te voorkomen
+          curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+            --connect-timeout 10 --max-time 60 --retry 3 \
+            "https://vps.openov.nl/kv6posinfo/vehiclePositions.json" > raw-positions.json
 
-              if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
-                echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
-              else
-                echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
-              fi
+          # 2. Filter direct met jq vanuit het bestand naar een variabele
+          BUS=$(jq '[.. | objects | select((.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510") and (.DataOwnerCode=="QBUZZ" or .dataOwnerCode=="QBUZZ"))] | .[0]' raw-positions.json 2>/dev/null)
+
+          # 3. Controleer de uitkomst
+          if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
+            echo '{"isLive": false, "msg": "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
+          else
+            LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
+            LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
+            SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
+            KMH=$(echo "scale=0; ($SPD * 3.6)/1" | bc 2>/dev/null || echo "0")
+
+            if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
+              echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
+            else
+              echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
             fi
           fi
-      - name: Veilig Commit en Push
-        run: |
-          git config --global user.name "GitHub Bot"
-          git config --global user.email "actions@github.com"
-          git add live-bus.json
-          if ! git diff-index --quiet HEAD; then
-            git commit -m "Update GPS Bus 510 [skip ci]"
-            git push
-          fi
+
+          # 4. Ruim het tijdelijke megabestand netjes op zodat het niet mee wordt gepusht
+          rm -f raw-positions.json
