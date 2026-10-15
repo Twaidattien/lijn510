@@ -21,9 +21,11 @@ jobs:
           if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
             echo '{"isLive": false, "msg": "OVapi server onbereikbaar of onderhoud"}' > live-bus.json
           else
-            BUS=$(echo "$RESPONSE" | jq '[.. | objects | select(.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510")] | .[0]')
+            # Aangescherpt filter: Zoek specifiek naar lijn 510 van vervoerder QBUZZ
+            BUS=$(echo "$RESPONSE" | jq '[.. | objects | select((.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510") and (.DataOwnerCode=="QBUZZ" or .dataOwnerCode=="QBUZZ"))] | .[0]')
+            
             if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
-              echo '{"isLive": false, "msg": "Bus 510 is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
+              echo '{"isLive": false, "msg": "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
             else
               LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
               LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
