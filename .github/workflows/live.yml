@@ -15,11 +15,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Ophalen openbare voertuigposities
         run: |
-          # 1. Download de landelijke data via de stabiele openbare NDOV HTTP-mirror naar een bestand
-          curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" --connect-timeout 15 --max-time 90 --retry 5 "https://ndov.openov.nl/kv6posinfo/vehiclePositions.json" > raw-positions.json
+          # 1. Haal uitsluitend de actuele voertuigen van Qbuzz op via de officiële open data transit API
+          curl -s "https://api.entur.io/realtime/v1/vehicles?codespace=QBUZZ" > qbuzz-vehicles.json
 
-          # 2. Filter vlijmscherp op Qbuzz Buurtbus 510 en haal direct het eerste object op
-          BUS=$(jq '[.. | objects | select((.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510") and (.DataOwnerCode=="QBUZZ" or .dataOwnerCode=="QBUZZ"))] | .[0]' raw-positions.json 2>/dev/null)
+          # 2. Filter binnen de Qbuzz data specifiek naar lijn 510
+          BUS=$(jq '[.[] | select(.lineRef == "v510" or .lineRef == "510")] | .[0]' qbuzz-vehicles.json 2>/dev/null)
 
           # 3. Verwerk de data en schrijf de status weg naar live-bus.json
           if [ -z "$BUS" ] || [ "$BUS" = "null" ] || [ "$BUS" = "[]" ]; then
