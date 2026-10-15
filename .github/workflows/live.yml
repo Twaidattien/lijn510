@@ -13,31 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Ophalen openbare voertuigposities
         run: |
-          # 1. Download de data rechtstreeks naar een tijdelijk bestand
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-          curl -s -A "$UA" --connect-timeout 10 --max-time 60 --retry 3 https://ndov.openov.nl/kv6posinfo/vehiclePositions.json > raw-positions.json
+          # Haal rechtstreeks de actuele ritten voor Lijn 510 in Veendam op via de 9292/OVapi-omgeving
+          RESPONSE=$(curl -s "https://api.9292.nl/journey/qbuzz/v510" 2>/dev/null)
 
-          # 2. Filter direct met jq vanuit het bestand naar een variabele
-          BUS=$(jq '[.. | objects | select((.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510") and (.DataOwnerCode=="QBUZZ" or .dataOwnerCode=="QBUZZ"))] | .[0]' raw-positions.json 2>/dev/null)
-
-          # 3. Controleer de uitkomst
-          if [ -z "$BUS" ] || [ "$BUS" = "null" ]; then
+          if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "DOCTYPE"; then
             echo '{"isLive": false, "msg": "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
           else
-            LAT=$(echo "$BUS" | jq '.Latitude // .latitude // null')
-            LON=$(echo "$BUS" | jq '.Longitude // .longitude // null')
-            SPD=$(echo "$BUS" | jq '.Speed // .speed // 0')
-            KMH=$(echo "scale=0; ($SPD * 3.6)/1" | bc 2>/dev/null || echo "0")
+            # Pak de realtime positie van de eerste actieve bus uit de data
+            LAT=$(echo "$RESPONSE" | jq '.realtimeTrips[0].latitude // null')
+            LON=$(echo "$RESPONSE" | jq '.realtimeTrips[0].longitude // null')
 
             if [ "$LAT" != "null" ] && [ "$LON" != "null" ]; then
-              echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": $KMH}" > live-bus.json
+              echo "{\"isLive\": true, \"latitude\": $LAT, \"longitude\": $LON, \"speed\": 0}" > live-bus.json
             else
-              echo '{"isLive": false, "msg": "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten"}' > live-bus.json
+              echo '{"isLive": false, "msg": "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)"}' > live-bus.json
             fi
           fi
-
-          # 4. Ruim het tijdelijke megabestand netjes op zodat het niet mee wordt gepusht
-          rm -f raw-positions.json
