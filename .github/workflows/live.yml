@@ -18,7 +18,7 @@ jobs:
         run: |
           # 1. Download de data rechtstreeks naar een tijdelijk bestand
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-          curl -s -A "$UA" --connect-timeout 10 --max-time 60 --retry 3 https://vps.openov.nl/kv6posinfo/vehiclePositions.json > raw-positions.json
+          curl -s -A "$UA" --connect-timeout 10 --max-time 60 --retry 3 https://ndov.openov.nl/kv6posinfo/vehiclePositions.json > raw-positions.json
 
           # 2. Filter direct met jq vanuit het bestand naar een variabele
           BUS=$(jq '[.. | objects | select((.LinePlanningNumber=="510" or .UserTransitCode=="510" or .linePlanningNumber=="510") and (.DataOwnerCode=="QBUZZ" or .dataOwnerCode=="QBUZZ"))] | .[0]' raw-positions.json 2>/dev/null)
