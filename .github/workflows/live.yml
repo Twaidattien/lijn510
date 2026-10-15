@@ -20,15 +20,20 @@ jobs:
             const https = require("https");
             const fs = require("fs");
 
-            // We halen het superlichte, ongecomprimeerde JSON-pakketje van lijn 510 op
             https.get("https://api.9292.nl/journey/qbuzz/v510", (res) => {
-              let data = "";
-              res.on("data", (chunk) => { data += chunk; });
+              let rawData = "";
+              res.on("data", (chunk) => { rawData += chunk; });
               res.on("end", () => {
+                // Als de server een foutcode of lege data geeft, schrijf dan direct een nette status
+                if (!rawData || rawData.trim() === "" || rawData.includes("DOCTYPE")) {
+                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)" }, null, 2));
+                  return;
+                }
+
                 try {
-                  const json = JSON.parse(data);
+                  const json = JSON.parse(rawData);
                   
-                  // Controleer of er realtime trips aanwezig zijn in de 9292 data
+                  // Controleer zorgvuldig op de aanwezigheid van realtime ritten
                   if (json && json.realtimeTrips && json.realtimeTrips.length > 0) {
                     const trip = json.realtimeTrips[0];
                     const lat = trip.latitude;
@@ -41,10 +46,11 @@ jobs:
                     }
                   }
                   
-                  // Als er geen actieve bus in de data zit (buiten dienstregeling of geen GPS-fix)
+                  // Standaard fallback als de structuur klopt maar er geen actieve rit in zit
                   fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)" }, null, 2));
                 } catch (e) {
-                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Fout bij parsen data" }, null, 2));
+                  // Mocht het parsen toch mislukken, zet hem dan netjes op niet-live in plaats van te crashen
+                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)" }, null, 2));
                 }
               });
             }).on("error", (err) => {
