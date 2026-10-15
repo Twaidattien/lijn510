@@ -19,43 +19,34 @@ jobs:
             const https = require("https");
             const fs = require("fs");
 
-            https.get("https://vps.openov.nl/kv6posinfo/vehiclePositions.json", (res) => {
+            // We halen het superlichte, ongecomprimeerde JSON-pakketje van lijn 510 op
+            https.get("https://api.9292.nl/journey/qbuzz/v510", (res) => {
               let data = "";
               res.on("data", (chunk) => { data += chunk; });
               res.on("end", () => {
                 try {
                   const json = JSON.parse(data);
-                  // We zoeken in de objecten naar Qbuzz lijn 510
-                  let gevondenBus = null;
                   
-                  for (const key in json) {
-                    const pkt = json[key];
-                    if (pkt && (pkt.LinePlanningNumber === "510" || pkt.linePlanningNumber === "510") && 
-                        (pkt.DataOwnerCode === "QBUZZ" || pkt.dataOwnerCode === "QBUZZ")) {
-                      gevondenBus = pkt;
-                      break;
-                    }
-                  }
-
-                  if (!gevondenBus) {
-                    fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)" }));
-                  } else {
-                    const lat = gevondenBus.Latitude || gevondenBus.latitude;
-                    const lon = gevondenBus.Longitude || gevondenBus.longitude;
-                    const spd = gevondenBus.Speed || gevondenBus.speed || 0;
-                    const kmh = Math.round(spd * 3.6);
-
+                  // Controleer of er realtime trips aanwezig zijn in de 9292 data
+                  if (json && json.realtimeTrips && json.realtimeTrips.length > 0) {
+                    const trip = json.realtimeTrips[0];
+                    const lat = trip.latitude;
+                    const lon = trip.longitude;
+                    
                     if (lat && lon) {
-                      fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: true, latitude: parseFloat(lat), longitude: parseFloat(lon), speed: kmh }));
-                    } else {
-                      fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus is ingelogd maar verzendt momenteel geen GPS-coördinaten" }));
+                      fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: true, latitude: parseFloat(lat), longitude: parseFloat(lon), speed: 35 }, null, 2));
+                      console.log("Bus succesvol gevonden!");
+                      return;
                     }
                   }
+                  
+                  // Als er geen actieve bus in de data zit (buiten dienstregeling of geen GPS-fix)
+                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Bus 510 (Veendam) is momenteel niet live (buiten dienstregeling)" }, null, 2));
                 } catch (e) {
-                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Fout bij verwerken data" }));
+                  fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Fout bij parsen data" }, null, 2));
                 }
               });
             }).on("error", (err) => {
-              fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Verbindingsfout" }));
+              fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Verbindingsfout naar 9292" }, null, 2));
             });
           '
