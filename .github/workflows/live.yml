@@ -16,7 +16,7 @@ jobs:
       - name: Ophalen openbare voertuigposities
         run: |
           # 1. Haal uitsluitend de actuele voertuigen van Qbuzz op via de officiële open data transit API
-          curl -s "https://api.entur.io/realtime/v1/vehicles?codespace=QBUZZ" > qbuzz-vehicles.json
+          curl -sk "https://api.entur.io/realtime/v1/vehicles?codespace=QBUZZ" > qbuzz-vehicles.json
 
           # 2. Filter binnen de Qbuzz data specifiek naar lijn 510
           BUS=$(jq '[.[] | select(.lineRef == "v510" or .lineRef == "510")] | .[0]' qbuzz-vehicles.json 2>/dev/null)
