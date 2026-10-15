@@ -57,18 +57,18 @@ jobs:
               fs.writeFileSync("live-bus.json", JSON.stringify({ isLive: false, msg: "Verbindingsfout naar 9292" }, null, 2));
             });
           '
-
       - name: Veilig Commit en Push
         run: |
           git config --global user.name "GitHub Bot"
           git config --global user.email "actions@github.com"
           
-          # Haal eerst eventuele handmatige wijzigingen/verwijderingen van de website binnen
-          git pull origin main --rebase
-          
-          # Voeg het bestand toe en commit altijd geforceerd
+          # Forceer het toevoegen van het bestand
           git add live-bus.json
-          git commit -m "Update GPS Bus 510 [skip ci]" --allow-empty
           
-          # Push de boel definitief live naar je repository
+          # Haal wijzigingen binnen en geef bij een conflict ALTIJD voorrang aan ons eigen nieuwe bestand
+          git pull origin main --rebase -X theirs || git reset HEAD live-bus.json
+          
+          # Commit en push de boel definitief live
+          git commit -m "Update GPS Bus 510 [skip ci]" --allow-empty
           git push origin main
+
