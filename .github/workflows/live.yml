@@ -15,11 +15,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Ophalen openbare voertuigposities
         run: |
-          # 1. Haal uitsluitend de actuele voertuigen van Qbuzz op via de officiële open data transit API
-          curl -sk "https://api.entur.io/realtime/v1/vehicles?codespace=QBUZZ" > qbuzz-vehicles.json
+          # 1. Download de actuele posities rechtstreeks van de openbare Qbuzz-server
+          curl -sk "https://itransit.nl/api/v1/operators/QBUZZ/vehicles" > qbuzz-vehicles.json
 
           # 2. Filter binnen de Qbuzz data specifiek naar lijn 510
-          BUS=$(jq '[.[] | select(.lineRef == "v510" or .lineRef == "510")] | .[0]' qbuzz-vehicles.json 2>/dev/null)
+          BUS=$(jq '[.[]? | select(.linePlanningNumber=="510" or .linePlanningNumber==510)] | .' qbuzz-vehicles.json 2>/dev/null)
 
           # 3. Verwerk de data en schrijf de status weg naar live-bus.json
           if [ -z "$BUS" ] || [ "$BUS" = "null" ] || [ "$BUS" = "[]" ]; then
